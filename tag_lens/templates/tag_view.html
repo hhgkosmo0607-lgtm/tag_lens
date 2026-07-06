@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Tags | TAG_LENS{% endblock %}
+{% block content %}
+<div class="section-head" style="margin-bottom:24px;">
+    <h2 style="font-size:1.4rem;font-weight:700;letter-spacing:-.01em;color:var(--ink);text-transform:none;">Tags</h2>
+    <p style="font-size:.85rem;color:var(--ink-2);">ํ ํ ๊ฐ ๋ ์ฌ์ง ๋ฆฌ์คํธ๋ก ์ด๋ํฉ๋๋ค.</p>
+</div>
+<div class="tag-big-grid">
+    {% for row in tag_counts %}
+    <a class="tag-big" href="{{ url_for('gallery', tag=row.name) }}">
+        {{ row.name }}
+        <span class="count">{{ row.photo_count }}장</span>
+    </a>
+    {% else %}
+    <p style="color:var(--ink-2);">아직 생성된 태그가 없습니다.</p>
+    {% endfor %}
+</div>
+{% endblock %}

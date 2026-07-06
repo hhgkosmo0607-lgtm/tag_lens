@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}About | TAG_LENS{% endblock %}
+{% block content %}
+<section class="hero" style="padding:48px 0 40px;">
+    <p class="hero-eyebrow">About</p>
+    <h1 style="font-size:clamp(1.6rem,4vw,2.4rem);">AI가 자동으로 정리하는<br>스마트 포토 갤러리</h1>
+    <p>사진을 업로드하면 얼굴 검출과 CNN을 결합해 장르를 자동 판별하고,<br>OpenCV로 시각적 특징을 분석해 여러 태그를 자동 생성합니다.</p>
+</section>
+<div class="about-grid">
+    <div class="about-item">
+        <h3>Hybrid Genre</h3>
+        <p>얼굴 검출(OpenCV) 우선, 얼굴 없으면 CNN 3-class(풍경/도시/음식) 분류</p>
+    </div>
+    <div class="about-item">
+        <h3>Auto Tags</h3>
+        <p>장르 + 밝기 + 색감 + 채도 + 흔백 여부를 조합해 다중 태그 자동 생성</p>
+    </div>
+    <div class="about-item">
+        <h3>Smart Filter</h3>
+        <p>태그 AND 조합 필터 + 별점 필터 + 날짜 필터 동시 지원</p>
+    </div>
+    <div class="about-item">
+        <h3>Similar Search</h3>
+        <p>Average Hash 기반 해밍 거리 유사도 계산으로 중복구간 사진 검색</p>
+    </div>
+</div>
+{% endblock %}

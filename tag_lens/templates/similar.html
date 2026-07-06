@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}Similar | TAG_LENS{% endblock %}
+{% block content %}
+<div class="panel" style="display:flex;gap:20px;align-items:center;">
+    <img style="width:80px;height:80px;object-fit:cover;border-radius:8px;flex-shrink:0;" src="{{ url_for('uploads_proxy', filename=photo.filename) }}" alt="">
+    <div>
+        <p style="font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);">Similar Photos</p>
+        <h1 style="font-size:1.3rem;">{{ photo.genre }} &mdash; 유사 사진</h1>
+    </div>
+</div>
+<div class="similar-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));">
+    {% for item in similar_photos %}
+    <a class="similar-card" href="{{ url_for('result', photo_id=item.id) }}">
+        <img src="{{ url_for('uploads_proxy', filename=item.filename) }}" alt="" loading="lazy">
+        <div class="similar-card-info">
+            <div>{{ item.genre }}</div>
+            <div>{{ item.similarity }}% 유사</div>
+        </div>
+    </a>
+    {% else %}
+    <p style="color:var(--ink-2);">유사 사진이 없습니다.</p>
+    {% endfor %}
+</div>
+{% endblock %}

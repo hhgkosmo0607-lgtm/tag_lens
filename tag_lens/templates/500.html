@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block title %}500 | TAG_LENS{% endblock %}
+{% block content %}
+<section class="panel">
+    <h1>500 - 서버 오류가 발생했습니다.</h1>
+    <p>잠시 후 다시 시도해주세요.</p>
+    <a class="btn primary" href="{{ url_for('home') }}">홈으로 이동</a>
+</section>
+{% endblock %}

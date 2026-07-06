@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block title %}Result | TAG_LENS{% endblock %}
+{% block content %}
+<div class="panel">
+    <div class="result-layout">
+        <div class="result-image-wrapper">
+            <img class="result-image" src="{{ url_for('uploads_proxy', filename=photo.filename) }}" alt="사진">
+        </div>
+        <div class="result-meta">
+            <div class="meta-row">
+                <span class="label">Genre</span>
+                <span class="value">{{ photo.genre }}</span>
+            </div>
+            <div class="meta-row">
+                <span class="label">Date</span>
+                <span class="value">{{ photo.upload_date }}</span>
+            </div>
+            <div class="meta-row">
+                <span class="label">Brightness</span>
+                <span class="value">{{ '%.0f'|format(photo.brightness) }} &mdash; {{ '밝은' if photo.brightness >= 120 else '어두운' }}</span>
+            </div>
+            <div class="meta-row">
+                <span class="label">Color Tone</span>
+                <span class="value">{{ photo.color_tone }}</span>
+            </div>
+            <div class="meta-row">
+                <span class="label">Saturation</span>
+                <span class="value">{{ '%.0f'|format(photo.saturation) }}</span>
+            </div>
+            <div class="meta-row">
+                <span class="label">B&W</span>
+                <span class="value">{{ '예' if photo.is_bw else '아니오' }}</span>
+            </div>
+            <div class="meta-row">
+                <span class="label">Faces</span>
+                <span class="value">{{ photo.face_count }}</span>
+            </div>
+            <div class="meta-row">
+                <span class="label">Rating</span>
+                <div class="star-rating">
+                    <form method="post" action="{{ url_for('rate_photo', photo_id=photo.id) }}" style="display:none;" id="rating-form-{{ photo.id }}">
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <input type="hidden" name="rating" id="rating-input-{{ photo.id }}" value="{{ photo.rating }}">
+                    </form>
+                    {% for n in range(1, 6) %}
+                    <span class="star" data-rating="{{ n }}" onclick="setRating({{ photo.id }}, {{ n }})" style="cursor:pointer;" title="{{ n }} stars">★</span>
+                    {% endfor %}
+                    <span class="rating-text">{{ photo.rating }}/5</span>
+                </div>
+                <script>
+                window.setRating = function(photoId, rating) {
+                    document.getElementById('rating-input-' + photoId).value = rating;
+                    document.getElementById('rating-form-' + photoId).submit();
+                };
+                document.addEventListener('DOMContentLoaded', function() {
+                    const rating = parseInt({{ photo.rating }}, 10);
+                    const stars = document.querySelectorAll('.star');
+                    const updateStars = (count) => {
+                        stars.forEach((star, idx) => {
+                            star.classList.toggle('filled', idx < count);
+                        });
+                    };
+                    updateStars(rating);
+                    stars.forEach(star => {
+                        star.addEventListener('mouseover', function() {
+                            const hoverRating = parseInt(this.dataset.rating, 10);
+                            updateStars(hoverRating);
+                        });
+                    });
+                    const container = document.querySelector('.star-rating');
+                    container.addEventListener('mouseleave', function() {
+                        updateStars(rating);
+                    });
+                });
+                </script>
+            </div>
+            <div class="meta-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
+                <span class="label">Tags</span>
+                <div>
+                    {% for tag in photo.tags %}
+                    <a class="tag" href="{{ url_for('gallery', tag=tag) }}">{{ tag }}</a>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {% if probabilities %}
+            <div class="prob-box">
+                <h3>CNN Classification</h3>
+                {% for label, pct in probabilities.items() %}
+                <div class="prob-bar">
+                    <div class="prob-bar-label">
+                        <span>{{ label }}</span><span>{{ pct }}%</span>
+                    </div>
+                    <div class="prob-bar-track">
+                        <div class="prob-bar-fill" style="width:{{ pct }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+                <a class="btn ghost sm" href="{{ url_for('similar', photo_id=photo.id) }}">유사 사진 검색</a>
+                <form method="post" action="{{ url_for('remove_photo', photo_id=photo.id) }}">
+                    <button class="btn danger sm">삭제</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if similar_photos %}
+<section style="margin-top:32px;">
+    <div class="section-head"><h2>Similar</h2></div>
+    <div class="similar-grid">
+        {% for item in similar_photos %}
+        <a class="similar-card" href="{{ url_for('result', photo_id=item.id) }}">
+            <img src="{{ url_for('uploads_proxy', filename=item.filename) }}" alt="" loading="lazy">
+            <div class="similar-card-info">{{ item.similarity }}% 유사</div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}Upload | TAG_LENS{% endblock %}
+{% block content %}
+<div class="panel" style="max-width:560px;margin:0 auto;">
+    <h1>Upload</h1>
+    <p>사진을 업로드하면 AI가 장르를 분류하고 태그를 자동 생성합니다.<br>지원 형식: PNG, JPG, JPEG, WEBP (여러 장 선택 가능)</p>
+    <form method="post" enctype="multipart/form-data">
+        <div class="upload-area">
+            <p style="font-size:.85rem;color:var(--ink-2);margin-bottom:16px;">파일을 선택하세요 (1개 이상)</p>
+            <input type="file" name="photo" accept="image/*" multiple required>
+        </div>
+        <div style="margin-top:20px;">
+            <button type="submit" class="btn primary">AI 분석 시작</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

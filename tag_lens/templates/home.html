@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}TAG_LENS{% endblock %}
+{% block content %}
+<section class="hero">
+    <p class="hero-eyebrow">AI Photo Gallery</p>
+    <h1>사진을 올리면<br>AI가 분석하고 정리합니다.</h1>
+    <p>얼굴 검출 + CNN 하이브리드 분류, OpenCV 특징 분석,<br>Average Hash 유사사진 검색을 자동으로 수행합니다.</p>
+    <div class="hero-actions">
+        <a class="btn primary" href="{{ url_for('upload') }}">사진 업로드</a>
+        <a class="btn ghost" href="{{ url_for('gallery') }}">갤러리 보기</a>
+    </div>
+</section>
+
+<section>
+    <div class="section-head">
+        <h2>Recent</h2>
+        <a class="btn ghost sm" href="{{ url_for('gallery') }}">전체 보기</a>
+    </div>
+    <div class="photo-grid">
+        {% for photo in photos %}
+        <a class="photo-card" href="{{ url_for('result', photo_id=photo.id) }}">
+            <img src="{{ url_for('uploads_proxy', filename=photo.filename) }}" alt="{{ photo.genre }}" loading="lazy">
+            <div class="photo-card-overlay">
+                <p class="genre">{{ photo.genre }}</p>
+            </div>
+        </a>
+        {% else %}
+        <p style="color:var(--ink-2);font-size:.9rem;">아직 업로드된 사진이 없습니다.</p>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

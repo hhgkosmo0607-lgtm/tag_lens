@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}Gallery | TAG_LENS{% endblock %}
+{% block content %}
+<div class="section-head" style="margin-bottom:16px;">
+    <h2 style="font-size:1.4rem;font-weight:700;letter-spacing:-.01em;color:var(--ink);text-transform:none;">Gallery</h2>
+</div>
+
+<form class="filters" method="get" action="{{ url_for('gallery') }}">
+    <div class="filter-group">
+        <label>평점 이상</label>
+        <select name="rating_min">
+            {% for n in range(0, 6) %}
+            <option value="{{ n }}" {% if rating_min == n %}selected{% endif %}>{{ n }}+</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>시작일</label>
+        <input type="date" name="date_from" value="{{ date_from }}">
+    </div>
+    <div class="filter-group">
+        <label>종료일</label>
+        <input type="date" name="date_to" value="{{ date_to }}">
+    </div>
+    <div class="filter-group" style="flex:1;min-width:200px;">
+        <label>Tags (AND)</label>
+        <div class="tag-check-group">
+            {% for row in tag_counts %}
+            <label>
+                <input type="checkbox" name="tag" value="{{ row.name }}" {% if row.name in selected_tags %}checked{% endif %}>
+                {{ row.name }} <span style="color:var(--ink-2);">({{ row.photo_count }})</span>
+            </label>
+            {% endfor %}
+        </div>
+    </div>
+    <button class="btn primary sm" type="submit">필터 적용</button>
+    {% if selected_tags or rating_min > 0 or date_from or date_to %}
+    <a class="btn ghost sm" href="{{ url_for('gallery') }}">초기화</a>
+    {% endif %}
+</form>
+
+<div class="photo-grid">
+    {% for photo in photos %}
+    <a class="photo-card" href="{{ url_for('result', photo_id=photo.id) }}">
+        <img src="{{ url_for('uploads_proxy', filename=photo.filename) }}" alt="{{ photo.genre }}" loading="lazy">
+        <div class="photo-card-overlay">
+            <p class="genre">{{ photo.genre }}</p>
+            <div class="tags-row">
+                {% for tag in (photo.tags or '').split(' ') if tag %}
+                <span>{{ tag }}</span>
+                {% endfor %}
+            </div>
+        </div>
+    </a>
+    {% else %}
+    <p style="color:var(--ink-2);font-size:.9rem;grid-column:1/-1;">조건에 맞는 사진이 없습니다.</p>
+    {% endfor %}
+</div>
+{% endblock %}
