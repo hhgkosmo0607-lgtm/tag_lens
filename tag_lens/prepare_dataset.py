@@ -45,6 +45,12 @@ OBJECT_CATEGORIES = [
     "wrench", "cellphone", "camera", "binocular", "mandolin",
 ]
 
+# 인물은 Caltech-101의 Faces(배경 포함) / Faces_easy(클로즈업 크롭) 카테고리를 사용
+# (단, Caltech Faces는 27명 정도만 반복 촬영돼 다양성이 낮으므로
+#  ashwingupta3012/human-faces(다양한 인물 7000장+)를 주 소스로 함께 사용)
+PERSON_CATEGORIES = ["Faces", "Faces_easy"]
+HUMAN_FACES_CATEGORY = "Humans"
+
 random.seed(RANDOM_SEED)
 
 
@@ -62,7 +68,11 @@ def download_datasets():
     caltech_path = kagglehub.dataset_download("imbikramsaha/caltech-101")
     print(f"  -> {caltech_path}")
 
-    return Path(intel_path), Path(food_path), Path(caltech_path)
+    print("[1/4] Human Faces 다운로드 중...")
+    human_faces_path = kagglehub.dataset_download("ashwingupta3012/human-faces")
+    print(f"  -> {human_faces_path}")
+
+    return Path(intel_path), Path(food_path), Path(caltech_path), Path(human_faces_path)
 
 
 def find_class_dir(root: Path, class_name: str):
@@ -128,6 +138,38 @@ def collect_objects(caltech_root: Path, work_dir: Path):
     print(f"  -> 사물: {len(list(target_dir.glob('*')))}장")
 
 
+def collect_persons(caltech_root: Path, human_faces_root: Path, work_dir: Path):
+    """Caltech-101 Faces/Faces_easy + human-faces(Humans) -> 인물 로 재분류."""
+    print("[2/4] 인물 폴더 재구성 중...")
+    target_dir = work_dir / "인물"
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    for cat in PERSON_CATEGORIES:
+        src_dir = find_class_dir(caltech_root, cat)
+        if src_dir is None:
+            print(f"  ! 경고: 인물 카테고리 '{cat}' 를 찾지 못함 (건너뜀)")
+            continue
+        for img in list(src_dir.glob("*.jpg")) + list(src_dir.glob("*.png")):
+            dst = target_dir / f"{cat}_{img.name}"
+            if not dst.exists():
+                shutil.copy(img, dst)
+
+    human_dir = find_class_dir(human_faces_root, HUMAN_FACES_CATEGORY)
+    if human_dir is None:
+        print(f"  ! 경고: '{HUMAN_FACES_CATEGORY}' 폴더를 찾지 못함 (건너뜀)")
+    else:
+        for img in (list(human_dir.glob("*.jpg")) + list(human_dir.glob("*.png"))
+                    + list(human_dir.glob("*.jpeg"))):
+            dst = target_dir / f"human_{img.name}"
+            if not dst.exists():
+                shutil.copy(img, dst)
+
+    count = len(list(target_dir.glob("*")))
+    print(f"  -> 인물: {count}장")
+    if count < SAMPLES_PER_CLASS:
+        print(f"  ! 참고: 인물 데이터가 목표치({SAMPLES_PER_CLASS}장)보다 적음. ({count}장)")
+
+
 def undersample(work_dir: Path, classes, samples_per_class: int):
     """클래스별 이미지 수를 samples_per_class로 맞춘다 (초과 시 랜덤 삭제 대상 선정)."""
     print("[3/4] 언더샘플링 중...")
@@ -167,13 +209,14 @@ def main():
     work_dir = Path("./_raw_sorted")  # 재분류 중간 결과 (임시)
     work_dir.mkdir(exist_ok=True)
 
-    intel_root, food_root, caltech_root = download_datasets()
+    intel_root, food_root, caltech_root, human_faces_root = download_datasets()
 
     collect_landscape_and_city(intel_root, work_dir)
     collect_food(food_root, work_dir)
     collect_objects(caltech_root, work_dir)
+    collect_persons(caltech_root, human_faces_root, work_dir)
 
-    classes = ["풍경", "도시", "음식", "사물"]
+    classes = ["풍경", "도시", "음식", "사물", "인물"]
     selected = undersample(work_dir, classes, SAMPLES_PER_CLASS)
     split_train_val(selected, OUTPUT_DIR, VAL_RATIO)
 

@@ -1,6 +1,6 @@
 """
 CNN 학습 스크립트 - MobileNetV2 fine-tuning
-4-class: 풍경 / 도시 / 음식 / 사물
+5-class: 풍경 / 도시 / 음식 / 사물 / 인물
 
 사용법:
     python train_model.py
@@ -11,12 +11,14 @@ CNN 학습 스크립트 - MobileNetV2 fine-tuning
     │   ├── 풍경/
     │   ├── 도시/
     │   ├── 음식/
-    │   └── 사물/
+    │   ├── 사물/
+    │   └── 인물/
     └── val/
         ├── 풍경/
         ├── 도시/
         ├── 음식/
-        └── 사물/
+        ├── 사물/
+        └── 인물/
 """
 
 from __future__ import annotations
@@ -39,14 +41,15 @@ IMG_SIZE = (224, 224)
 BATCH_SIZE = 32
 EPOCHS_FROZEN = 15  # 기본 특징 학습 더 오래
 EPOCHS_FINETUNE = 30  # 미세조정 더 오래
-CLASS_NAMES = ["풍경", "도시", "음식", "사물"]
+CLASS_NAMES = ["풍경", "도시", "음식", "사물", "인물"]
 
-# 클래스 가중치 (도시가 데이터가 적으므로 가중치 증가)
+# 클래스 가중치 (데이터가 적은 클래스일수록 가중치 증가)
 CLASS_WEIGHTS = {
     0: 1.0,      # 풍경
     1: 1.8,      # 도시 (데이터 적음 → 가중치 높음)
     2: 1.0,      # 음식
     3: 1.0,      # 사물
+    4: 2.2,      # 인물 (Caltech Faces 계열이라 데이터 가장 적음 → 가중치 최고)
 }
 
 

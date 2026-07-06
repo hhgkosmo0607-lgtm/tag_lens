@@ -8,7 +8,9 @@ from flask import Flask, flash, redirect, render_template, request, send_from_di
 from werkzeug.utils import secure_filename
 from PIL import Image
 
+from ai.daynight_predict import predict_daynight
 from ai.genre_predict import predict_genre, extract_features
+from ai.tagging import generate_tags
 from database.database import (
     delete_photo,
     find_duplicate_by_hash,
@@ -66,31 +68,6 @@ def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def generate_tags(genre: str, features: dict[str, object], face_count_value: int) -> list[str]:
-    """
-    간단하고 일관성 있는 태그 생성
-    - 장르 기반 태그만 사용 (일관성)
-    - 특징(밝기, 채도, 색상)은 metadata로 표시 (분리)
-    """
-    tags: set[str] = set()
-
-    # 장르 태그 (기본)
-    genre_map = {
-        "풍경": ["#풍경"],
-        "도시": ["#도시"],
-        "음식": ["#음식"],
-        "사물": ["#사물"],
-        "인물": ["#인물"],
-    }
-    tags.update(genre_map.get(genre, []))
-
-    # 선택적 추가 태그 (도시 야경만)
-    if genre == "도시" and features["brightness_label"] == "어두운":
-        tags.add("#야경")
-
-    return sorted(tags)
-
-
 @app.before_request
 def bootstrap_db() -> None:
     if "db_initialized" not in session:
@@ -140,14 +117,16 @@ def upload():
             if face_count_value > 0:
                 # 얼굴 감지되면 인물 사진으로 분류 (CNN 무시)
                 genre = "인물"
-                probabilities = {"풍경": 0.0, "도시": 0.0, "음식": 0.0, "사물": 0.0}
+                probabilities = {"풍경": 0.0, "도시": 0.0, "음식": 0.0, "사물": 0.0, "인물": 1.0}
             else:
-                # 얼굴 없으면 CNN으로 4-class 분류 (풍경/도시/음식/사물)
+                # 얼굴 없으면 CNN으로 5-class 분류 (풍경/도시/음식/사물/인물)
                 genre, probabilities = predict_genre(image, str(BASE_DIR / "models" / "genre_model.h5"))
+
+            daynight, _daynight_probs = predict_daynight(image, str(BASE_DIR / "models" / "daynight_model.h5"))
 
             features = analyze_features(image)
             image_hash = create_average_hash(image)
-            
+
             # 중복 사진 확인
             duplicate = find_duplicate_by_hash(image_hash)
             if duplicate:
@@ -156,9 +135,9 @@ def upload():
                     save_path.unlink(missing_ok=True)
                 error_count += 1
                 continue
-            
+
             embedding = extract_features(image, str(BASE_DIR / "models" / "genre_model.h5"))
-            tags = generate_tags(genre, features, face_count_value)
+            tags = generate_tags(genre, daynight)
 
             photo_id = insert_photo(
                 {

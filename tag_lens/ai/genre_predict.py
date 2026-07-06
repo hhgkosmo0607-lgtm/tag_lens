@@ -6,7 +6,7 @@ import numpy as np
 
 from opencv.preprocess import prepare_for_cnn
 
-CLASS_NAMES = ["풍경", "도시", "음식", "사물"]
+CLASS_NAMES = ["풍경", "도시", "음식", "사물", "인물"]
 
 
 def _heuristic_predict(image) -> tuple[str, dict[str, float]]:
@@ -14,10 +14,11 @@ def _heuristic_predict(image) -> tuple[str, dict[str, float]]:
     b, g, r = np.mean(image.reshape(-1, 3), axis=0)
 
     scores = {
-        "풍경": 0.25,
-        "도시": 0.25,
-        "음식": 0.25,
-        "사물": 0.25,
+        "풍경": 0.2,
+        "도시": 0.2,
+        "음식": 0.2,
+        "사물": 0.2,
+        "인물": 0.2,
     }
 
     if abs(h - w) < min(h, w) * 0.2:

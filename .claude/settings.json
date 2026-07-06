@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/Scripts/python.exe -c \"import cv2; print\\(cv2.__version__\\); print\\(cv2.data.haarcascades\\)\")",
+      "Bash(.venv/Scripts/python.exe -c \"import cv2, os; print\\('\\\\n'.join\\(sorted\\(os.listdir\\(cv2.data.haarcascades\\)\\)\\)\\)\")",
+      "Bash(.venv/Scripts/python.exe -m pip list)",
+      "Bash(python -m pip list)",
+      "Bash(.venv/Scripts/python.exe --version)",
+      "Bash(conda env *)",
+      "PowerShell(conda env list 2>&1)",
+      "PowerShell(& \"C:\\\\01Developkits\\\\miniconda3\\\\shell\\\\condabin\\\\conda-hook.ps1\")",
+      "PowerShell(conda activate firstvenv)",
+      "PowerShell(python --version)",
+      "PowerShell(python -m pip list)",
+      "Read(//c/Users/KOSMO/.cache/kagglehub/datasets/imbikramsaha/caltech-101/versions/1/**)",
+      "WebSearch",
+      "Read(//c/Users/KOSMO/.cache/kagglehub/datasets/ibrahimalobaid/day-and-night-image/versions/1/**)",
+      "Bash(rm tag_lens/uploads/*.jpg *)",
+      "Read(//c/Users/KOSMO/AppData/Local/Temp/claude/c--02Workspaces-portfolio-Python-project/935e9744-c18e-4ade-acab-0d69a1bb90ae/tasks/**)"
+    ],
+    "additionalDirectories": [
+      "C:\\02Workspaces\\portfolio\\Python_project\\tag_lens\\uploads"
+    ]
+  }
+}

@@ -101,6 +101,13 @@ def link_tags(photo_id: int, tags: list[str]) -> None:
             )
 
 
+def replace_tags(photo_id: int, tags: list[str]) -> None:
+    """사진의 기존 태그 연결을 모두 지우고 새 태그로 교체 (재분류용)."""
+    with get_connection() as conn:
+        conn.execute("DELETE FROM photo_tag WHERE photo_id = ?", (photo_id,))
+    link_tags(photo_id, tags)
+
+
 def _build_filter_query(tags: list[str], rating_min: int, date_from: str, date_to: str) -> tuple[str, list[object]]:
     where = ["1=1"]
     params: list[object] = []
@@ -198,6 +205,14 @@ def find_duplicate_by_hash(image_hash: str) -> sqlite3.Row | None:
 def update_rating(photo_id: int, rating: int) -> None:
     with get_connection() as conn:
         conn.execute("UPDATE photo SET rating = ? WHERE id = ?", (rating, photo_id))
+
+
+def update_classification(photo_id: int, genre: str, face_count: int) -> None:
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE photo SET genre = ?, face_count = ? WHERE id = ?",
+            (genre, face_count, photo_id),
+        )
 
 
 def delete_photo(photo_id: int) -> None:

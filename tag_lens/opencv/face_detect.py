@@ -2,60 +2,39 @@ from __future__ import annotations
 
 import cv2
 import numpy as np
-from pathlib import Path
+import mediapipe as mp
 
-# OpenCV 4.x / 5.x 모두 대응
-def _load_cascade() -> cv2.CascadeClassifier | None:
-    """Haar Cascade 로드 (여러 경로 시도)"""
-    # 시도할 경로 순서
-    candidates = [
-        cv2.data.haarcascades + "haarcascade_frontalface_default.xml",
-        str(Path(cv2.__file__).parent / "data" / "haarcascade_frontalface_default.xml"),
-    ]
-    
-    # cv2.CascadeClassifier 위치 탐색 (4.x: cv2, 5.x: cv2.objdetect)
-    CascadeClass = getattr(cv2, "CascadeClassifier", None)
-    if CascadeClass is None:
-        objdetect = getattr(cv2, "objdetect", None)
-        if objdetect:
-            CascadeClass = getattr(objdetect, "CascadeClassifier", None)
-
-    if CascadeClass is None:
-        print("[DEBUG] CascadeClassifier not found in cv2 or cv2.objdetect")
-        return None
-
-    for xml_path in candidates:
-        try:
-            cascade = CascadeClass(xml_path)
-            if not cascade.empty():
-                print(f"[DEBUG] Successfully loaded cascade from: {xml_path}")
-                return cascade
-        except Exception as e:
-            print(f"[DEBUG] Failed to load from {xml_path}: {e}")
-            continue
-    
-    print(f"[DEBUG] Could not load cascade from any path: {candidates}")
-    return None
-
-
-_FACE_CASCADE = _load_cascade()
+# model_selection=1: 카메라에서 5m 이내 원거리/작은 얼굴까지 잡는 full-range 모델
+# (0번 short-range 모델은 2m 이내 정면 위주라 Haar Cascade와 큰 차이가 없음)
+_FACE_DETECTOR = mp.solutions.face_detection.FaceDetection(
+    model_selection=1,
+    min_detection_confidence=0.5,
+)
 
 
 def detect_faces(image: np.ndarray) -> list[tuple[int, int, int, int]]:
     """
-    Haar Cascade를 사용한 얼굴 감지 (안정적)
+    mediapipe BlazeFace 기반 얼굴 감지.
+    Haar Cascade와 달리 측면/기울어진 얼굴, 저조도, 작은 얼굴도 상당수 검출한다.
     Returns: [(x, y, w, h), ...] 형식
     """
-    if _FACE_CASCADE is None or _FACE_CASCADE.empty():
-        return []
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    faces = _FACE_CASCADE.detectMultiScale(
-        gray,
-        scaleFactor=1.05,  # 더 세밀하게 탐색
-        minNeighbors=4,    # 조금 덜 엄격하게 (놓치는 얼굴 줄이기)
-        minSize=(30, 30),
-    )
-    return [tuple(map(int, face)) for face in faces]
+    h, w = image.shape[:2]
+    rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    results = _FACE_DETECTOR.process(rgb)
+
+    faces: list[tuple[int, int, int, int]] = []
+    if not results.detections:
+        return faces
+
+    for detection in results.detections:
+        box = detection.location_data.relative_bounding_box
+        x = max(0, int(box.xmin * w))
+        y = max(0, int(box.ymin * h))
+        bw = min(w - x, int(box.width * w))
+        bh = min(h - y, int(box.height * h))
+        if bw > 0 and bh > 0:
+            faces.append((x, y, bw, bh))
+    return faces
 
 
 def count_faces(image: np.ndarray) -> int:
