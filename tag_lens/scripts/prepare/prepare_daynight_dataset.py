@@ -9,7 +9,7 @@ Kaggle의 day-and-night-image 데이터셋(day_night_images/{training,test}/{day
     C:/Users/<사용자명>/.kaggle/kaggle.json 에 Kaggle API 토큰 저장
 
 사용법:
-    python prepare_daynight_dataset.py
+    python scripts/prepare/prepare_daynight_dataset.py
 """
 
 from __future__ import annotations
@@ -20,7 +20,8 @@ from pathlib import Path
 
 import kagglehub
 
-OUTPUT_DIR = Path("./dataset_daynight")
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+OUTPUT_DIR = BASE_DIR / "dataset_daynight"
 VAL_RATIO = 0.2
 RANDOM_SEED = 42
 

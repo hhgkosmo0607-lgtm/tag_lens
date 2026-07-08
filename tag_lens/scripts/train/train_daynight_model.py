@@ -3,7 +3,7 @@ CNN 학습 스크립트 - MobileNetV2 fine-tuning
 2-class: 주간 / 야간
 
 사용법:
-    python train_daynight_model.py
+    python scripts/train/train_daynight_model.py
 
 데이터셋 폴더 구조 (실행 전 준비, prepare_daynight_dataset.py로 자동 생성):
     dataset_daynight/
@@ -24,7 +24,7 @@ from tensorflow.keras import layers
 from tensorflow.keras.applications import MobileNetV2
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DATASET_DIR = BASE_DIR / "dataset_daynight"
 MODEL_PATH = BASE_DIR / "models" / "daynight_model.h5"
 

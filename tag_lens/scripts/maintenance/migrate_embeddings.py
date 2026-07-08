@@ -3,14 +3,17 @@
 
 import json
 import sqlite3
+import sys
 from pathlib import Path
 
 import numpy as np
 
-from ai.genre_predict import extract_features
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(BASE_DIR))
+
+from ai.embedding import extract_features
 from opencv.preprocess import load_image
 
-BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "tag_lens.db"
 UPLOAD_DIR = BASE_DIR / "uploads"
 
@@ -46,7 +49,7 @@ def migrate_embeddings():
         try:
             # 이미지 로드 및 특징 추출
             image = load_image(str(image_path))
-            embedding = extract_features(image, str(BASE_DIR / "models" / "genre_model.h5"))
+            embedding = extract_features(image)
             embedding_json = json.dumps(embedding.tolist())
             
             # 데이터베이스 업데이트

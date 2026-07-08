@@ -1,20 +1,20 @@
 """
 CNN 학습 스크립트 - MobileNetV2 fine-tuning
-5-class: 풍경 / 도시 / 음식 / 사물 / 인물
+5-class: 자연 / 도시 / 음식 / 사물 / 인물
 
 사용법:
-    python train_model.py
+    python scripts/train/train_genre_model.py
 
 데이터셋 폴더 구조 (실행 전 준비):
     dataset/
     ├── train/
-    │   ├── 풍경/
+    │   ├── 자연/
     │   ├── 도시/
     │   ├── 음식/
     │   ├── 사물/
     │   └── 인물/
     └── val/
-        ├── 풍경/
+        ├── 자연/
         ├── 도시/
         ├── 음식/
         ├── 사물/
@@ -33,7 +33,7 @@ from tensorflow.keras import layers
 from tensorflow.keras.applications import MobileNetV2
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DATASET_DIR = BASE_DIR / "dataset"
 MODEL_PATH = BASE_DIR / "models" / "genre_model.h5"
 
@@ -41,16 +41,18 @@ IMG_SIZE = (224, 224)
 BATCH_SIZE = 32
 EPOCHS_FROZEN = 15  # 기본 특징 학습 더 오래
 EPOCHS_FINETUNE = 30  # 미세조정 더 오래
-CLASS_NAMES = ["풍경", "도시", "음식", "사물", "인물"]
+CLASS_NAMES = ["자연", "도시", "음식", "사물", "인물"]
 
-# 클래스 가중치 (데이터가 적은 클래스일수록 가중치 증가)
-CLASS_WEIGHTS = {
-    0: 1.0,      # 풍경
-    1: 1.8,      # 도시 (데이터 적음 → 가중치 높음)
-    2: 1.0,      # 음식
-    3: 1.0,      # 사물
-    4: 2.2,      # 인물 (Caltech Faces 계열이라 데이터 가장 적음 → 가중치 최고)
-}
+
+def compute_class_weights(train_ds) -> dict[int, float]:
+    """실제 train 폴더의 클래스별 이미지 수를 바탕으로 역빈도 가중치를 계산한다.
+    데이터셋 구성이 바뀔 때마다 하드코딩된 가중치를 손으로 고칠 필요가 없다."""
+    counts = np.bincount(train_ds.classes, minlength=len(CLASS_NAMES))
+    total = counts.sum()
+    weights = {i: float(total / (len(CLASS_NAMES) * c)) for i, c in enumerate(counts)}
+    for name, idx in train_ds.class_indices.items():
+        print(f"  {name}: {counts[idx]}장 → weight {weights[idx]:.3f}")
+    return weights
 
 
 def build_data_pipeline() -> tuple[tf.data.Dataset, tf.data.Dataset]:
@@ -113,14 +115,17 @@ def train() -> None:
 
     if not (DATASET_DIR / "train").exists():
         print("[ERROR] dataset/train 폴더가 없습니다.")
-        print("  → prepare_dataset.py를 먼저 실행하거나 dataset 폴더를 직접 구성하세요.")
+        print("  → prepare_genre_dataset.py를 먼저 실행하거나 dataset 폴더를 직접 구성하세요.")
         return
 
     MODEL_PATH.parent.mkdir(exist_ok=True)
     train_ds, val_ds = build_data_pipeline()
 
     print(f"\n훈련 샘플: {train_ds.samples}  |  검증 샘플: {val_ds.samples}")
-    print(f"클래스 인덱스: {train_ds.class_indices}\n")
+    print(f"클래스 인덱스: {train_ds.class_indices}")
+    print("클래스 가중치:")
+    class_weights = compute_class_weights(train_ds)
+    print()
 
     model, base = build_model()
     model.compile(
@@ -142,7 +147,7 @@ def train() -> None:
         epochs=EPOCHS_FROZEN,
         validation_data=val_ds,
         callbacks=callbacks_phase1,
-        class_weight=CLASS_WEIGHTS,
+        class_weight=class_weights,
     )
 
     # ── 2단계: 상위 레이어 일부 해동 후 fine-tuning ──────────

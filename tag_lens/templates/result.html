@@ -28,14 +28,6 @@
                 <span class="value">{{ '%.0f'|format(photo.saturation) }}</span>
             </div>
             <div class="meta-row">
-                <span class="label">B&W</span>
-                <span class="value">{{ '예' if photo.is_bw else '아니오' }}</span>
-            </div>
-            <div class="meta-row">
-                <span class="label">Faces</span>
-                <span class="value">{{ photo.face_count }}</span>
-            </div>
-            <div class="meta-row">
                 <span class="label">Rating</span>
                 <div class="star-rating">
                     <form method="post" action="{{ url_for('rate_photo', photo_id=photo.id) }}" style="display:none;" id="rating-form-{{ photo.id }}">

@@ -3,7 +3,7 @@ TAG_LENS - CNN 학습 데이터 자동 준비 스크립트
 
 이 스크립트는 다음을 자동으로 수행합니다:
 1. Kaggle에서 Intel Image Classification, Food-101, Caltech-101 데이터셋 다운로드
-2. 풍경(sea+glacier+mountain+forest) / 도시(buildings+street) / 음식(선택 카테고리)
+2. 자연(sea+glacier+mountain+forest) / 도시(buildings+street) / 음식(선택 카테고리)
    / 사물(선택 카테고리) 로 재분류 (4-class)
 3. 클래스별 이미지 수를 맞추는 언더샘플링
 4. train/val 8:2 분리
@@ -14,7 +14,7 @@ TAG_LENS - CNN 학습 데이터 자동 준비 스크립트
     (https://www.kaggle.com/settings/api 에서 발급 후 저장)
 
 사용법:
-    python prepare_dataset.py
+    python scripts/prepare/prepare_genre_dataset.py
 """
 
 import os
@@ -25,7 +25,8 @@ from pathlib import Path
 import kagglehub
 
 # ---------- 설정 ----------
-OUTPUT_DIR = Path("./dataset")          # 최종 결과가 저장될 경로
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+OUTPUT_DIR = BASE_DIR / "dataset"       # 최종 결과가 저장될 경로
 SAMPLES_PER_CLASS = 2000                # 클래스당 목표 이미지 수 (언더샘플링 기준)
 VAL_RATIO = 0.2                         # val 비율
 RANDOM_SEED = 42
@@ -38,11 +39,16 @@ FOOD_CATEGORIES = [
 ]
 
 # 사물은 Caltech-101의 101개 카테고리 중 "일상 사물/인공물" 계열만 선택
-# (동물/자연물/얼굴 카테고리는 제외 - 풍경/인물과 겹치지 않게)
+# (동물/자연물/얼굴/무기/랜드마크 건축물 카테고리는 제외 - 자연/인물과 겹치지 않게)
 OBJECT_CATEGORIES = [
     "chair", "windsor_chair", "cup", "ewer", "lamp", "laptop",
     "headphone", "watch", "scissors", "stapler", "umbrella",
     "wrench", "cellphone", "camera", "binocular", "mandolin",
+    # 2026-07-08 확장: 실사용 오분류(음식/사물 혼동) 개선을 위해 카테고리 다양성 확보
+    "accordion", "anchor", "barrel", "bass", "ceiling_fan", "chandelier",
+    "dollar_bill", "electric_guitar", "euphonium", "gramophone",
+    "grand_piano", "inline_skate", "menorah", "metronome", "saxophone",
+    "soccer_ball", "stop_sign", "wheelchair",
 ]
 
 # 인물은 Caltech-101의 Faces(배경 포함) / Faces_easy(클로즈업 크롭) 카테고리를 사용
@@ -82,10 +88,10 @@ def find_class_dir(root: Path, class_name: str):
 
 
 def collect_landscape_and_city(intel_root: Path, work_dir: Path):
-    """Intel 데이터셋 -> 풍경 / 도시 로 재분류."""
-    print("[2/4] 풍경/도시 폴더 재구성 중...")
+    """Intel 데이터셋 -> 자연 / 도시 로 재분류."""
+    print("[2/4] 자연/도시 폴더 재구성 중...")
     mapping = {
-        "풍경": ["sea", "glacier", "mountain", "forest"],
+        "자연": ["sea", "glacier", "mountain", "forest"],
         "도시": ["buildings", "street"],
     }
     for label, sub_classes in mapping.items():
@@ -216,7 +222,7 @@ def main():
     collect_objects(caltech_root, work_dir)
     collect_persons(caltech_root, human_faces_root, work_dir)
 
-    classes = ["풍경", "도시", "음식", "사물", "인물"]
+    classes = ["자연", "도시", "음식", "사물", "인물"]
     selected = undersample(work_dir, classes, SAMPLES_PER_CLASS)
     split_train_val(selected, OUTPUT_DIR, VAL_RATIO)
 

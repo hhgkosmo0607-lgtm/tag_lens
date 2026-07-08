@@ -2,3 +2,7 @@ _raw_sorted/
 dataset/
 uploads/
 dataset_daynight/
+dataset_indoor/
+__pycache__/
+*.pyc
+*.log

@@ -5,3 +5,4 @@ Pillow==10.4.0
 tensorflow==2.18.0
 kagglehub
 mediapipe
+datasets

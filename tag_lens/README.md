@@ -1,169 +1,133 @@
-# PhotoSense AI
+# TAG_LENS
 
-AI 기반 사진 장르 분석 및 태그 기반 스마트 갤러리 웹 서비스입니다.
+AI 기반 사진 장르 분석 및 태그 기반 스마트 갤러리 웹 서비스.
 
 ## 주요 기능
 
-- 사진 업로드 및 저장
+- 사진 업로드 (다중 업로드 지원)
 - 하이브리드 장르 분류
-  - 1단계: OpenCV 얼굴 검출 (얼굴 있으면 `인물`)
-  - 2단계: 얼굴이 없을 때 CNN 3-class (`풍경/도시/음식`)
-- OpenCV 특징 분석 (밝기/색감/채도/흑백)
-- 자동 태그 생성 (다중 태그)
-- 태그 AND 필터 + 별점 + 날짜 필터
-- Average Hash 유사 사진 검색
+  1. mediapipe 얼굴 검출 — 얼굴이 감지되면 곧바로 `인물`
+  2. 얼굴이 없으면 CNN 5-class (`자연 / 도시 / 음식 / 사물 / 인물`)
+- 주간/야간 CNN 이진 분류 (흑백 사진은 판별 제외)
+- 실내/실외 CNN 이진 분류 (배경이 보이는 자연/도시/인물 장르에만 적용, `#실내`만 태그, 확신도 낮으면 태그 없음)
+- OpenCV 특징 분석 (밝기 / 색감 / 채도 / 흑백 여부)
+- 동물 세부 태그 (`#강아지`/`#고양이`/`#말`/`#동물`) — ImageNet 1000-class 사전학습 MobileNetV2로 판별
+- 자동 다중 태그 생성 (`#자연`, `#야간`/`#야경`, `#흑백`, `#따뜻한`/`#차가운`, `#실내`, 동물 태그, CNN 확신도 낮으면 `#기타` 등)
+- 태그 AND 필터 + 별점 필터 + 날짜 필터
+- CNN 임베딩 기반 유사 사진 검색 (임베딩 없으면 Average Hash로 폴백)
+- Average Hash 기반 업로드 중복 감지
 - 사진 별점(0~5) 및 삭제
 
-## 폴더 구조
+## 프로젝트 구조
 
 ```text
-PhotoSenseAI/
-│ app.py
-│ requirements.txt
-│ README.md
-│ photosense.db (실행 후 생성)
+tag_lens/
+├── app.py                      Flask 앱 — 라우팅 + 업로드 파이프라인
+├── requirements.txt
+├── tag_lens.db                  SQLite DB (photo / tag / photo_tag)
+│
+├── ai/                          판단/추론 로직 (직접 학습한 모델 + 외부 사전학습 모델)
+│   ├── genre_predict.py         5-class 장르 CNN 추론 — 직접 학습(전이학습)
+│   ├── daynight_predict.py      주간/야간 이진 CNN 추론 — 직접 학습(전이학습)
+│   ├── indoor_predict.py        실내/실외 이진 CNN 추론 — 직접 학습(전이학습)
+│   ├── face_detect.py           얼굴 검출 — mediapipe(Google) 사전학습 모델, 순수 사전학습(직접 학습 안 함)
+│   ├── embedding.py             유사 사진 검색용 특징 추출 — MobileNetV2/ImageNet, 순수 사전학습(직접 학습 안 함)
+│   ├── animal_predict.py        동물 세부 태그(강아지/고양이/말/동물) — MobileNetV2/ImageNet 1000-class, 순수 사전학습(직접 학습 안 함)
+│   └── tagging.py               generate_tags() — app.py와 scripts/가 공유하는 태그 생성 로직
+│
+├── opencv/                      순수 이미지 처리 (OpenCV만 사용, 판단 로직 없음)
+│   ├── preprocess.py            이미지 로드 / CNN 입력 전처리
+│   └── feature_analyzer.py      밝기/색감/채도/흑백 분석
+│
+├── hash/
+│   └── average_hash.py          Average Hash — 중복 감지 + 임베딩 없을 때 유사도 폴백
 │
 ├── database/
-│      database.py
+│   └── database.py              스키마 생성 + CRUD / 필터 / 유사도 쿼리
 │
-├── templates/
-│      base.html
-│      home.html
-│      upload.html
-│      result.html
-│      gallery.html
-│      tag_view.html
-│      similar.html
-│      about.html
-│      404.html
-│      500.html
+├── templates/, static/          Flask 뷰 템플릿 + CSS
 │
-├── static/
-│   └── css/
-│      style.css
+├── models/                      학습된 모델 파일
+│   ├── genre_model.h5           장르 5-class CNN
+│   ├── daynight_model.h5        주야간 이진 CNN
+│   └── indoor_model.h5          실내/실외 이진 CNN
 │
-├── uploads/
-├── models/
-│      genre_model.h5   (선택: 있으면 CNN 사용)
+├── uploads/                                        업로드된 사진 (gitignore)
+├── dataset/, dataset_daynight/, dataset_indoor/     학습용 데이터셋 (gitignore, scripts/prepare/로 생성)
 │
-├── ai/
-│      genre_predict.py
-│
-├── opencv/
-│      preprocess.py
-│      feature_analyzer.py
-│      face_detect.py
-│
-└── hash/
-       average_hash.py
+└── scripts/                     일회성 학습·유지보수 스크립트 (앱 런타임과 무관, 수동 실행) — 역할별 하위 폴더
+    ├── prepare/                     데이터셋을 처음부터 구성 (원본 다운로드 → train/val 폴더)
+    │   ├── prepare_genre_dataset.py     장르 5-class 데이터셋 구성 (Kaggle 다운로드)
+    │   ├── prepare_daynight_dataset.py  주야간 데이터셋 구성 (Kaggle 다운로드)
+    │   └── prepare_indoor_dataset.py    실내/실외 데이터셋 구성 (HuggingFace 다운로드)
+    │
+    ├── expand/                      이미 있는 데이터셋에 데이터를 추가로 보강
+    │   ├── expand_object_dataset.py         사물 데이터셋에 Caltech-101 카테고리 추가
+    │   ├── expand_daynight_with_dnim.py     주야간 데이터셋에 DNIM(다지점 웹캠, 실제 촬영시각 라벨) 다양성 추가
+    │   ├── expand_indoor_with_places365.py  실내/실외 데이터셋에 Places365 다양성 추가
+    │   └── IO_places365.txt                 Places365 indoor/outdoor 공식 매핑 (위 스크립트가 참조)
+    │
+    ├── train/                       준비된 데이터셋으로 CNN 학습 → models/*.h5
+    │   ├── train_genre_model.py         장르 CNN 학습 1단계(base 동결) + 2단계(fine-tuning) 통합
+    │   ├── train_genre_model_phase2.py  2단계(fine-tuning)만 독립 재실행 — 세션을 나눠 이어갈 때 사용
+    │   ├── train_daynight_model.py      주야간 CNN 학습
+    │   ├── train_indoor_model.py        실내/실외 CNN 학습
+    │   └── colab_train.ipynb            장르+주야간 CNN을 Colab GPU에서 학습(로컬 CPU가 느릴 때)
+    │
+    └── maintenance/                 이미 DB에 있는 사진들에 결과 반영
+        ├── reclassify_photos.py         기존 DB 사진 재분류(장르/태그 갱신, 모델 갱신 후 실행)
+        ├── migrate_embeddings.py        기존 사진에 CNN 임베딩 백필
+        └── _test_kaggle.py              kagglehub 연결 테스트
 ```
+
+## 이미지 분석 파이프라인 (`app.py` 업로드 처리 순서)
+
+1. mediapipe 얼굴 검출 → 얼굴 있으면 `인물`로 확정
+2. 얼굴이 없으면 CNN 5-class 장르 분류 (`자연/도시/음식/사물/인물`, 확신도 낮으면 `기타`)
+3. 주간/야간 CNN 이진 분류 (흑백 사진은 제외)
+4. 장르가 `자연`/`도시`/`인물`이면 실내/실외 CNN 이진 분류 (`사물`/`음식`은 배경 맥락이 없어 제외)
+5. OpenCV 특징 분석 (밝기/색감/채도/흑백)
+6. ImageNet 1000-class 사전학습 MobileNetV2로 동물 세부 판별 (`강아지`/`고양이`/`말`/`동물`, 확신도 낮으면 태그 없음)
+7. Average Hash로 업로드 중복 검사
+8. CNN 임베딩 추출 → 유사 사진 검색에 사용
+9. 태그 생성 (`#장르`, `#주간`/`#야간`, 조건부 `#야경`, `#흑백`, 흑백이 아니면 `#따뜻한`/`#차가운`, 실내면 `#실내`, 동물이면 `#강아지`/`#고양이`/`#말`/`#동물`)
 
 ## 실행 방법
 
-1. 프로젝트 폴더 이동
-
 ```bash
-cd PhotoSenseAI
-```
-
-2. 패키지 설치
-
-```bash
-pip install -r requirements.txt
-```
-
-3. 실행
-
-```bash
+cd tag_lens
+pip install -r requirements.txt   # 또는 conda 환경 firstvenv 활성화
 python app.py
 ```
 
-4. 접속
+- http://127.0.0.1:5000 접속
+- 실행 시 `uploads/` 폴더와 SQLite 테이블(`photo`/`tag`/`photo_tag`)이 자동 생성됨
 
-- http://127.0.0.1:5000
+## 모델
 
-## CNN 모델 관련
+- `models/genre_model.h5`, `models/daynight_model.h5`, `models/indoor_model.h5` 모두 MobileNetV2 전이학습 기반, 2단계 학습(1단계 base 동결 → 2단계 상위 30레이어 fine-tuning)으로 만들어짐
+- 모델 파일이 없거나 로드에 실패하면 각 `predict_*` 함수가 밝기 기반 휴리스틱으로 자동 폴백
+- 학습에 쓰인 실제 패키지(tensorflow/opencv/kagglehub/mediapipe)는 conda 환경 **`firstvenv`**(Python 3.12)에 설치돼 있음. 프로젝트 루트의 `.venv`는 비어있는 미사용 환경이므로 혼동 주의
+- 로컬에 GPU가 없어 학습은 CPU로 진행되며, MobileNetV2 전이학습도 데이터 규모에 따라 에폭당 100~250초 소요. 데이터셋이 크면 `scripts/train/colab_train.ipynb`로 Google Colab(GPU T4)에서 학습 가능 — `dataset/`, `dataset_daynight/`를 zip으로 압축해 Drive에 올린 뒤 노트북 안내대로 진행
 
-- `models/genre_model.h5` 파일이 있으면 해당 모델로 `풍경/도시/음식` 분류를 수행합니다.
-- 모델이 없거나 로드 실패 시, 데모용 휴리스틱 분류로 자동 폴백됩니다.
+## 데이터셋 출처
 
-## 데이터베이스
+| 용도 | 출처 |
+|---|---|
+| 장르 — 자연/도시 | Kaggle [`puneet6060/intel-image-classification`](https://www.kaggle.com/datasets/puneet6060/intel-image-classification) (sea/glacier/mountain/forest → 자연, buildings/street → 도시) |
+| 장르 — 음식 | Kaggle [`kmader/food41`](https://www.kaggle.com/datasets/kmader/food41) (Food-101, 12개 카테고리 선택) |
+| 장르 — 사물 | Kaggle [`imbikramsaha/caltech-101`](https://www.kaggle.com/datasets/imbikramsaha/caltech-101) (Caltech-101, 34개 카테고리 선택) |
+| 장르 — 인물 | Kaggle `imbikramsaha/caltech-101`(Faces/Faces_easy) + Kaggle [`ashwingupta3012/human-faces`](https://www.kaggle.com/datasets/ashwingupta3012/human-faces) |
+| 주간/야간 (기본) | Kaggle [`ibrahimalobaid/day-and-night-image`](https://www.kaggle.com/datasets/ibrahimalobaid/day-and-night-image) (400장, 도로 CCTV 1곳) |
+| 주간/야간 (다양성 확장) | Kaggle [`stevemark/daynight-dataset`](https://www.kaggle.com/datasets/stevemark/daynight-dataset) (DNIM, Archive of Many Outdoor Scenes 기반 — 17개의 서로 다른 웹캠 위치, 파일명의 실제 촬영 시각으로 라벨링) |
+| 실내/실외 (기본) | HuggingFace [`prithivMLmods/IndoorOutdoorNet-20K`](https://huggingface.co/datasets/prithivMLmods/IndoorOutdoorNet-20K) (Apache-2.0) |
+| 실내/실외 (다양성 확장) | Kaggle `puneet6060/intel-image-classification`(도시 재활용, 전부 실외) + HuggingFace [`ljnlonoljpiljm/places365-256px`](https://huggingface.co/datasets/ljnlonoljpiljm/places365-256px) (Places365, MIT — 365개 장면 카테고리를 [공식 indoor/outdoor 매핑](https://github.com/CSAILVision/places365)으로 라벨링) |
+| 얼굴 검출 모델 | mediapipe BlazeFace full-range 사전학습 모델(Google MediaPipe Model Zoo) — `models/blaze_face_full_range.tflite` |
+| 유사도 검색 임베딩 | MobileNetV2 ImageNet 사전학습 가중치(Keras Applications, 장르로 fine-tuning 안 된 원본) |
+| 동물 세부 태그 | MobileNetV2 ImageNet 1000-class 사전학습 가중치(Keras Applications, include_top=True 그대로 사용, 학습 안 함) |
 
-SQLite(`photosense.db`)를 사용하며, 앱 실행 시 자동으로 테이블이 생성됩니다.
+> **참고**: 주간/야간을 늘리려고 5-class 이미지에 밝기 기반 자동 라벨(pseudo-label)을 붙이는 방식을 한 번 시도했으나, 그림자 짙은 대낮 사진을 야간으로 잘못 라벨링하는 문제가 발견돼 폐기했다(해당 스크립트는 삭제됨). 대신 위 표의 DNIM처럼 **신뢰할 수 있는 실제 라벨(촬영 시각 등)이 있는 데이터**로만 확장하는 방향으로 정리했다. 자세한 경위는 [DEVLOG.md](DEVLOG.md) 참고.
 
-- `photo`
-- `tag`
-- `photo_tag`
+## 개발 현황
 
-######################################
-tag_lens는 이미지 분석을 3단계로 수행한다.
-
-1. Image Attribute Analysis (OpenCV)
-   - 흑백/컬러
-   - 밝기
-   - 야간/주간
-   - 실내/실외
-   - 채도/대비
-
-2. Object Detection (OpenCV / ML)
-   - 얼굴 검출 → 인물/비인물
-
-3. Semantic Classification (CNN)
-   - 풍경 / 도시 / 음식 / 자연 / 사물
-
-4. Sub-classification (optional)
-   - 음식 → 세부 음식 분류
-   - 자연 → 세부 자연 분류
-
-클래스 불균형 문제는 Class Weight를 통해 해결한다.
-
-######################################
-## 세션 작업 로그 (2026-07-06) — 다음에 이어갈 것
-
-### 이번 세션에서 완료한 것
-
-- **원인 진단**: "사물" 클래스가 학습 데이터 0장으로 비어있었고(`prepare_dataset.py`의 Caltech-101 수집 실패), CNN에 "인물" 클래스 자체가 없어서 얼굴 검출(Haar Cascade) 실패 시 안전망이 없었음.
-- **얼굴 검출기 교체**: `opencv/face_detect.py` — Haar Cascade → mediapipe(BlazeFace) 기반으로 교체. 측면/각도/작은 얼굴도 더 잘 잡음. `requirements.txt`에 `mediapipe` 추가.
-- **데이터셋 5-class로 확장** (`prepare_dataset.py`):
-  - 사물: Caltech-101 카테고리 재수집 → 1066장 확보
-  - 인물: Caltech Faces/Faces_easy(870장, 다양성 낮음) + `ashwingupta3012/human-faces`(7219장) 조합 → 2000장 샘플링
-  - 최종: 풍경 2000 / 도시 938 / 음식 2000 / 사물 1066 / 인물 2000, train:val = 8:2
-- **주간/야간 이진 분류기 신규 추가**:
-  - `prepare_daynight_dataset.py` (Kaggle `ibrahimalobaid/day-and-night-image`, 200장/200장)
-  - `train_daynight_model.py` → `models/daynight_model.h5` (**검증 정확도 98.75%**, 학습 완료)
-  - `ai/daynight_predict.py`
-- **코드 정리**:
-  - `ai/tagging.py` 신규 — `generate_tags()`를 공용화해서 `app.py`, `reclassify_photos.py`가 같이 씀
-  - `database/database.py` — `replace_tags()`, `update_classification()` 추가
-  - `reclassify_photos.py` 재작성 — 얼굴검출→5-class CNN→주간/야간→태그 교체까지 `app.py`와 동일 로직으로 맞춤
-  - `app.py` — 주간/야간 예측 연동, 태그에 `#주간`/`#야간`/`#야경` 반영
-  - `templates/about.html` 문구를 5-class + mediapipe 기준으로 갱신
-- **테스트 데이터 초기화**: `uploads/`의 테스트 사진 7장 + DB(`photo`/`tag`/`photo_tag`) 전부 삭제, 클린 상태로 만듦
-
-### 지금 진행 중인 것 (미완료 — 다음에 이어갈 것)
-
-1. **genre CNN(5-class) 1단계 학습 완료, 의도적으로 여기서 멈춰둔 상태.**
-   - 1단계(base 동결, 15 epoch) 완료 — best는 epoch 14, **val_accuracy 99.72%, val_loss 0.0125**로 `models/genre_model.h5`에 저장됨
-   - 2단계(fine-tuning) 진입 직후(첫 스텝만 돈 시점) 프로세스를 멈춰서 사실상 손실 없음
-   - **다음에 이어서 할 것**: `python train_model_phase2.py` (conda 환경 `firstvenv` 활성화 후) 실행 → `models/genre_model.h5`를 불러와 상위 30레이어 해동 후 fine-tuning(최대 30 epoch) 진행
-2. `train_model_phase2.py` 완료 후 남은 할 일:
-   - 실제 사진 업로드해서 전체 파이프라인(장르 5-class + 얼굴검출 + 주간/야간 태그) 동작 확인
-   - `reclassify_photos.py`는 지금 DB가 비어있어서 당장은 할 게 없음 — 새로 업로드된 사진이 쌓인 뒤 필요시 실행
-   - `result.html`에 주간/야간 확률 바 추가할지 여부 결정 (요청은 받았으나 아직 답 안 나옴)
-
-### 나중에 고려할 것 (아직 시작 안 함)
-
-- **실내/실외 이진 분류기** — day/night과 같은 패턴(Kaggle 데이터셋 찾기 → prepare/train/predict 스크립트 → `app.py` 연동)으로 추가 가능. 아직 데이터셋도 안 정함.
-- **세션/프로세스 지속성 주의**: 이 세션에서 띄운 백그라운드 학습 프로세스는 VSCode/세션을 완전히 닫으면 같이 종료될 가능성이 높음 (자식 프로세스로 추정). 학습 중엔 세션을 켜두거나, 완전 분리된 프로세스로 재시작해야 안전하게 지속됨.
-- 환경: 실제 패키지(tensorflow/opencv/kagglehub/mediapipe 등)는 conda 환경 **`firstvenv`**(Python 3.12)에 설치돼 있음. 프로젝트 루트의 `.venv`는 비어있는 미사용 환경이므로 혼동 주의.
-
-### GPU 문제 — 로컬은 CPU라 학습이 느림
-
-이 컴퓨터엔 GPU가 없거나 TensorFlow가 GPU를 못 잡고 있어서, 학습이 전부 CPU로 돌아 에폭당 200초 이상 걸림 (MobileNetV2 전이학습처럼 가벼운 모델인데도). 데이터가 더 커지면 CPU로는 감당 안 됨 — GPU 필요.
-
-로컬 GPU가 없을 때 현실적인 대안 (나중에 시도, 아직 진행 안 함):
-
-- **Google Colab (추천)**: 이미 만들어둔 `dataset/` 폴더를 zip으로 압축 → Google Drive 업로드 → Colab에서 런타임 유형을 GPU(T4)로 변경 → Drive 마운트 후 압축 해제 → `train_model.py`/`train_model_phase2.py` 코드를 노트북에 올려 실행 → 끝나면 `models/genre_model.h5`를 다시 Drive→로컬로 다운로드. Kaggle 인증 재설정 불필요, 지금 상태를 그대로 이어가기 가장 쉬움.
-- **Kaggle Notebook**: kaggle.com/code에서 새 노트북 생성 → "Add Input"으로 intel-image-classification / food41 / caltech-101 / human-faces 데이터셋을 그대로 추가 (업로드 불필요) → Settings에서 Accelerator를 GPU로 설정 → `prepare_dataset.py`/`train_model.py` 로직을 `/kaggle/input/...` 경로에 맞게 고쳐서 실행. 업로드 용량 제한이 없다는 장점.
-
-둘 다 무료 티어로 지금 규모의 전이학습에는 충분히 빠름. 브라우저 작업이 필요해서 사용자가 직접 진행해야 하고, Claude가 대신 클릭할 수는 없음 — 필요한 노트북 코드/스크립트 준비는 요청 시 도와줄 수 있음.
+작업 로그·알려진 이슈·다음 할 일은 [DEVLOG.md](DEVLOG.md) 참고.

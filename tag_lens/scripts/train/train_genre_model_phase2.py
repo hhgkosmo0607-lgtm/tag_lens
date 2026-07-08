@@ -1,13 +1,13 @@
 """
 CNN 학습 스크립트 - 2단계(fine-tuning)만 독립 실행
 
-train_model.py의 1단계(base 동결)가 이미 끝나서 models/genre_model.h5에
+train_genre_model.py의 1단계(base 동결)가 이미 끝나서 models/genre_model.h5에
 체크포인트가 저장돼 있다는 전제 하에, 그 체크포인트를 불러와
 상위 30레이어를 해동하고 이어서 fine-tuning한다.
 1단계를 다시 돌리지 않아도 되므로 세션을 나눠서 재개할 때 사용한다.
 
 사용법:
-    python train_model_phase2.py
+    python scripts/train/train_genre_model_phase2.py
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from __future__ import annotations
 from tensorflow import keras
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 
-from train_model import EPOCHS_FINETUNE, MODEL_PATH, build_data_pipeline
+from train_genre_model import EPOCHS_FINETUNE, MODEL_PATH, build_data_pipeline
 
 BASE_LAYER_NAME = "mobilenetv2_1.00_224"
 
