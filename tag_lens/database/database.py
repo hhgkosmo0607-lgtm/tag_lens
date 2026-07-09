@@ -117,6 +117,15 @@ def replace_tags(photo_id: int, tags: list[str]) -> None:
     link_tags(photo_id, tags)
 
 
+def unlink_tag(photo_id: int, tag_name: str) -> None:
+    """사진에서 태그 하나만 제거한다. tag 테이블 자체의 행은 다른 사진이 쓸 수 있어 남겨둔다."""
+    with get_connection() as conn:
+        conn.execute(
+            "DELETE FROM photo_tag WHERE photo_id = ? AND tag_id = (SELECT id FROM tag WHERE name = ?)",
+            (photo_id, tag_name),
+        )
+
+
 def _build_filter_query(tags: list[str], rating_min: int, date_from: str, date_to: str) -> tuple[str, list[object]]:
     where = ["1=1"]
     params: list[object] = []

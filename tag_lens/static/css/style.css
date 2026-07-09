@@ -327,12 +327,23 @@ main { padding: 48px 0 80px; }
     border-radius: 99px;
     padding: 4px 10px;
     cursor: pointer;
-    transition: background .15s;
+    transition: background .15s, color .15s;
 }
 
 .tag-check-group label:hover { background: var(--tag-hover); }
 
-.tag-check-group input[type="checkbox"] { accent-color: var(--ink); }
+.tag-check-group input[type="checkbox"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+}
+
+.tag-check-group label:has(input[type="checkbox"]:checked) {
+    background: var(--ink);
+    color: var(--white);
+}
 
 /* ─── Buttons ───────────────────────────────────────── */
 .btn {
@@ -384,6 +395,35 @@ main { padding: 48px 0 80px; }
 
 .tag:hover { background: var(--tag-hover); }
 
+.tag-removable {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin: 2px;
+}
+
+.tag-removable .tag { margin: 0; }
+
+.tag-remove-form { display: inline-flex; }
+
+.tag-remove-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border: none;
+    border-radius: 50%;
+    background: var(--tag-bg);
+    color: var(--ink-2);
+    font-size: .85rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+}
+
+.tag-remove-btn:hover { background: #fde2e2; color: #c0392b; }
+
 .tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .tag-add-form { display: flex; gap: 6px; }
@@ -407,7 +447,7 @@ main { padding: 48px 0 80px; }
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 32px;
-    align-items: center;
+    align-items: start;
 }
 
 .result-image-wrapper {

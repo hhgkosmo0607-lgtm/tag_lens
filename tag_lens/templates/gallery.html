@@ -27,13 +27,13 @@
         <div class="tag-check-group">
             {% for row in tag_counts %}
             <label>
-                <input type="checkbox" name="tag" value="{{ row.name }}" {% if row.name in selected_tags %}checked{% endif %}>
+                <input type="checkbox" name="tag" value="{{ row.name }}" {% if row.name in selected_tags %}checked{% endif %} onchange="this.form.submit()">
                 {{ row.name }} <span style="color:var(--ink-2);">({{ row.photo_count }})</span>
             </label>
             {% endfor %}
         </div>
     </div>
-    <button class="btn primary sm" type="submit">필터 적용</button>
+    <button class="btn primary sm" type="submit">평점/날짜 적용</button>
     {% if selected_tags or rating_min > 0 or date_from or date_to %}
     <a class="btn ghost sm" href="{{ url_for('gallery') }}">초기화</a>
     {% endif %}

@@ -15,7 +15,7 @@ AI 기반 사진 장르 분석 및 태그 기반 스마트 갤러리 웹 서비�
 - 주간/야간 판별 (EXIF 촬영시각 우선, 없으면 CLIP 제로샷으로 폴백 — 흑백 사진은 판별 제외). EXIF의 `OffsetTimeOriginal`이 시간대 미설정 기본값(`+00:00`)인데 `OffsetTime`은 실제 시간대를 가리키면 카메라 시계 오류로 보고 보정
 - 실내/실외 CLIP 제로샷 이진 분류 (도시/인물 장르에만 적용, `#실내`만 태그, 확신도(60%) 낮으면 태그 없음. 자연은 2026-07-09부터 제외 — 실내 오탐이 훨씬 흔해서 신뢰도가 낮았음)
 - OpenCV 특징 분석 (밝기 / 색감 / 채도 / 흑백 여부)
-- 동물 세부 태그 (`#강아지`/`#고양이`/`#말`/`#동물`) — CLIP 제로샷으로 판별. 종(species) 프롬프트 1등-2등 점수차가 좁으면(동물이 없는데 색감/구도가 막연히 "동물틱"해서 걸리는 경우) 태그 안 붙임
+- 동물 세부 태그 (`#강아지`/`#고양이`/`#말`/`#동물`) — CLIP 제로샷으로 판별. 종(species) 프롬프트 1등-2등 점수차가 좁으면(동물이 없는데 색감/구도가 막연히 "동물틱"해서 걸리는 경우) 태그 안 붙임. mediapipe Object Detector(EfficientDet-Lite0)로 실제 바운딩박스 크기까지 확인해서, 화면 대비 너무 작은(주제가 아닌 곁다리) 동물도 태그 안 붙임
 - 자동 다중 태그 생성 (`#장르`, `#야간`/`#야경`, `#흑백`, `#따뜻한`/`#차가운`, `#실내`, 동물 태그, 확신도 낮으면 `#기타` 등)
 - 태그 AND 필터 + 별점 필터 + 날짜 필터
 - CNN 임베딩 기반 유사 사진 검색 (임베딩 없으면 Average Hash로 폴백)
@@ -35,9 +35,9 @@ tag_lens/
 │   ├── genre_predict.py         5-class 장르 분류 — CLIP 제로샷(2026-07-09, 이전엔 직접 학습 CNN). resolve_genre_with_animal()도 여기 위치
 │   ├── daynight_predict.py      주간/야간 판별 — EXIF 촬영시각 우선(카메라 시계 오류 보정 포함) + CLIP 제로샷 폴백(2026-07-09, 이전엔 직접 학습 CNN)
 │   ├── indoor_predict.py        실내/실외 이진 분류 — CLIP 제로샷(2026-07-09, 이전엔 직접 학습 CNN). clip_utils.py를 안 쓰고 자체 CLIP 로더를 따로 둠(의도적)
-│   ├── animal_predict.py        동물 세부 태그(강아지/고양이/말/동물) — CLIP 제로샷(2026-07-09, 이전엔 ImageNet MobileNetV2). 종 프롬프트 1등-2등 gap 임계값으로 오탐 방어
+│   ├── animal_predict.py        동물 세부 태그(강아지/고양이/말/동물) — CLIP 제로샷(2026-07-09, 이전엔 ImageNet MobileNetV2). 종 프롬프트 1등-2등 gap 임계값 + mediapipe Object Detector 크기 게이트로 오탐/곁다리 동물 방어
 │   ├── clip_utils.py            CLIP 모델(openai/clip-vit-base-patch32) 공유 로더 — genre/daynight/animal predict가 사용 (indoor는 제외, 위 참고)
-│   ├── face_detect.py           얼굴 검출 — mediapipe(Google) 사전학습 모델, 순수 사전학습(직접 학습 안 함)
+│   ├── face_detect.py           얼굴 검출 — mediapipe(Google) 사전학습 BlazeFace + CLIP 크롭 2차 검증(원형 물체 오탐 방어, 2026-07-09)
 │   ├── embedding.py             유사 사진 검색용 특징 추출 — MobileNetV2/ImageNet, 순수 사전학습(직접 학습 안 함)
 │   └── tagging.py               generate_tags() — app.py와 scripts/가 공유하는 태그 생성 로직
 │
@@ -53,10 +53,12 @@ tag_lens/
 │
 ├── templates/, static/          Flask 뷰 템플릿 + CSS
 │
-├── models/                      학습된 모델 파일 — 2026-07-09부터 추론에서 미사용(레거시, CLIP으로 대체됨)
-│   ├── genre_model.h5           장르 5-class CNN (레거시)
-│   ├── daynight_model.h5        주야간 이진 CNN (레거시)
-│   └── indoor_model.h5          실내/실외 이진 CNN (레거시)
+├── models/
+│   ├── genre_model.h5                  장르 5-class CNN (레거시, 2026-07-09부터 추론에서 미사용 — CLIP으로 대체됨)
+│   ├── daynight_model.h5               주야간 이진 CNN (레거시, 위와 동일)
+│   ├── indoor_model.h5                 실내/실외 이진 CNN (레거시, 위와 동일)
+│   ├── blaze_face_full_range.tflite    mediapipe 얼굴 검출 사전학습 모델 (현재 사용)
+│   └── efficientdet_lite0.tflite       mediapipe 객체 검출 사전학습 모델, COCO 90-class — 동물 태그 크기 게이트용(현재 사용, 2026-07-09 추가)
 │
 ├── uploads/                                        업로드된 사진 (gitignore)
 ├── dataset/, dataset_daynight/, dataset_indoor/     학습용 데이터셋 (gitignore, scripts/prepare/로 생성)
@@ -145,6 +147,7 @@ python app.py
 | 실내/실외 (기본) | HuggingFace [`prithivMLmods/IndoorOutdoorNet-20K`](https://huggingface.co/datasets/prithivMLmods/IndoorOutdoorNet-20K) (Apache-2.0) |
 | 실내/실외 (다양성 확장) | Kaggle `puneet6060/intel-image-classification`(도시 재활용, 전부 실외) + HuggingFace [`ljnlonoljpiljm/places365-256px`](https://huggingface.co/datasets/ljnlonoljpiljm/places365-256px) (Places365, MIT — 365개 장면 카테고리를 [공식 indoor/outdoor 매핑](https://github.com/CSAILVision/places365)으로 라벨링) |
 | 얼굴 검출 모델 (현재 사용) | mediapipe BlazeFace full-range 사전학습 모델(Google MediaPipe Model Zoo) — `models/blaze_face_full_range.tflite` |
+| 동물 태그 크기 게이트 (현재 사용) | mediapipe Object Detector, EfficientDet-Lite0 사전학습 모델(COCO 90-class, Google MediaPipe Model Zoo) — `models/efficientdet_lite0.tflite`. 종 분류는 CLIP이 이미 하므로 여기선 바운딩박스 크기만 참고 |
 | 유사도 검색 임베딩 (현재 사용) | MobileNetV2 ImageNet 사전학습 가중치(Keras Applications, 장르로 fine-tuning 안 된 원본) |
 | 장르/주야간(폴백)/실내외/동물 (현재 사용) | `openai/clip-vit-base-patch32` 사전학습 가중치(HuggingFace `transformers`), 제로샷 그대로 사용 — 자세한 프롬프트/임계값은 `ai/genre_predict.py`, `ai/daynight_predict.py`, `ai/indoor_predict.py`, `ai/animal_predict.py` 참고 |
 | 동물 세부 태그 (레거시) | MobileNetV2 ImageNet 1000-class 사전학습 가중치(Keras Applications, include_top=True 그대로 사용, 학습 안 함) — CLIP으로 교체되기 전에 쓰던 방식, 견종 위주 편향 문제로 폐기 |

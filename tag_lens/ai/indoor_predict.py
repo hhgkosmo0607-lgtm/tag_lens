@@ -8,16 +8,14 @@ CLASS_NAMES = ["실내", "실외"]
 # 경우까지 억지로 실내/실외를 확정하지 않고, 확신이 낮으면 판별 자체를 건너뛴다.
 LOW_CONFIDENCE_THRESHOLD = 0.6
 
-# 실내/실외 판별은 배경이 어느 정도 보이는 장르에만 적용한다.
-# 사물/음식은 클로즈업 정물 위주라 판단 근거(벽/천장 등 공간 맥락)가 사진에 거의 없어 제외.
-#
-# 자연도 2026-07-09에 제외로 변경: 실측(실제 업로드 사진 36장 중 자연 장르 6장에 #실내
-# 오탐)으로 확인해보니 (1) 자연 장르 사진은 정의상 거의 항상 실외(숲/바다/산)라 진짜
-# 실내인 경우(창문 너머 촬영 등)가 드문 반면, (2) 장노출/흔들림 추상 사진이 장르
-# CNN에서 자연으로 오분류된 경우와 (3) 야간 실외 사진(불빛만 밝고 하늘이 안 보임)이
-# 실내 CNN에 반복적으로 실내로 오판되는 경우가 훨씬 흔했음(주간 33%, 야간 56%가
-# #실내 오탐). 도시/인물은 스튜디오·카페처럼 실내/실외 구분 자체가 의미 있는 장르라 유지.
-INDOOR_CHECK_GENRES = {"도시", "인물"}
+# 2026-07-08~09: 실내/실외 CNN이 자연 장르에서 오탐이 잦아(36장 중 6장) 도시/인물
+# 장르에만 적용하는 화이트리스트(INDOOR_CHECK_GENRES = {"도시","인물"})를 뒀었다.
+# 2026-07-09 CLIP 전환 후 재검증: 사물/음식/기타 장르 샘플(카페 벽 콜라주, 뱅크시
+# 벽화, 모나리자 포스터 매대 등)에서도 합리적인 결과가 나왔고, 자연 장르 9장 전부
+# 87.7~100% 확신도로 정확히 실외 판정됨(오탐 0건) — CNN 시절의 자연 오탐 패턴이
+# CLIP에는 재현되지 않아, 장르 화이트리스트를 없애고 모든 장르에 적용하도록 변경.
+# 확신도가 낮으면(LOW_CONFIDENCE_THRESHOLD 미만) 어차피 태그가 안 붙으므로, 사물/
+# 음식처럼 공간 맥락이 부족한 클로즈업 사진은 그 경우 자연스럽게 걸러진다.
 
 # 2026-07-09: 자체 학습 CNN(MobileNetV2 fine-tuning)을 CLIP 제로샷으로 교체함.
 #
@@ -36,8 +34,22 @@ INDOOR_CHECK_GENRES = {"도시", "인물"}
 # ai/embedding.py, ai/animal_predict.py와 같은 "순수 사전학습, 직접 학습 안 함" 계열 —
 # CLIP도 이 프로젝트에서 파인튜닝하지 않고 그대로 쓴다.
 _MODEL_NAME = "openai/clip-vit-base-patch32"
-_INDOOR_PROMPTS = ["a photo taken indoors, inside a building", "an indoor scene with a ceiling and walls"]
-_OUTDOOR_PROMPTS = ["a photo taken outdoors, outside a building", "an outdoor scene in the open air"]
+
+# 2026-07-09 프롬프트 개정: "밤에 조명만 밝고 하늘이 안 보이는 실외"(가게 앞에 세워둔
+# 자전거, 환하게 불 켜진 매장 전면이 배경을 채움) 사진이 실내 89.2%로 오판되는 사례
+# 발견 — 기존 프롬프트("실내 장면, 천장과 벽이 있는")가 "카메라가 실내에 있는지"가
+# 아니라 "장면에 실내스러운 디테일(조명/진열)이 보이는지"에 반응하는 것으로 추정.
+# "카메라/촬영자의 위치"를 명시하는 프롬프트로 교체해서 해결: 타겟 사진 실내 89.2%→
+# 58.2%(임계값 미만으로 태그 제거), 기존 정탐 8건(실내 4 + 실외 4) + 자연 장르 9건
+# 전부 회귀 없음 확인.
+_INDOOR_PROMPTS = [
+    "a photo taken from inside a room or building, surrounded by walls and a ceiling",
+    "the camera is indoors, inside an enclosed space",
+]
+_OUTDOOR_PROMPTS = [
+    "a photo taken while standing outdoors on a street, sidewalk, or open area",
+    "the camera is outdoors in the open air, not enclosed by walls",
+]
 
 _CLIP_MODEL = None
 _CLIP_PROCESSOR = None

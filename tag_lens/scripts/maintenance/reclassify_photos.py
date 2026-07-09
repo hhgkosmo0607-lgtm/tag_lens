@@ -13,7 +13,7 @@ from ai.animal_predict import predict_animal
 from ai.daynight_predict import extract_exif_hour, resolve_daynight
 from ai.face_detect import count_faces
 from ai.genre_predict import predict_genre, resolve_genre_with_animal
-from ai.indoor_predict import INDOOR_CHECK_GENRES, predict_indoor
+from ai.indoor_predict import predict_indoor
 from ai.tagging import generate_tags
 from database.database import replace_tags, update_classification
 from opencv.feature_analyzer import analyze_features
@@ -71,10 +71,7 @@ def reclassify_all_photos():
             features = analyze_features(image)
             exif_hour, raw_exif_hour = extract_exif_hour(str(image_path))
             daynight, daynight_probs = resolve_daynight(image, exif_hour, str(DAYNIGHT_MODEL_PATH), raw_exif_hour)
-            if new_genre in INDOOR_CHECK_GENRES:
-                indoor, _ = predict_indoor(image, str(INDOOR_MODEL_PATH))
-            else:
-                indoor = None
+            indoor, _ = predict_indoor(image, str(INDOOR_MODEL_PATH))
             tags = generate_tags(new_genre, daynight, features["is_bw"], indoor, features["color_tone"], animal)
 
             update_classification(

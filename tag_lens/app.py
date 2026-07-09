@@ -13,7 +13,7 @@ from ai.daynight_predict import extract_exif_hour, get_exif_datetime_and_offsets
 from ai.embedding import extract_features
 from ai.face_detect import count_faces
 from ai.genre_predict import predict_genre, resolve_genre_with_animal
-from ai.indoor_predict import INDOOR_CHECK_GENRES, predict_indoor
+from ai.indoor_predict import predict_indoor
 from ai.tagging import generate_tags
 from database.database import (
     delete_photo,
@@ -25,6 +25,7 @@ from database.database import (
     init_db,
     insert_photo,
     link_tags,
+    unlink_tag,
     update_rating,
 )
 from hash.average_hash import create_average_hash
@@ -135,10 +136,7 @@ def upload():
                 image, exif_hour, str(BASE_DIR / "models" / "daynight_model.h5"), raw_exif_hour
             )
 
-            if genre in INDOOR_CHECK_GENRES:
-                indoor, _indoor_probs = predict_indoor(image, str(BASE_DIR / "models" / "indoor_model.h5"))
-            else:
-                indoor = None
+            indoor, _indoor_probs = predict_indoor(image, str(BASE_DIR / "models" / "indoor_model.h5"))
 
             features = analyze_features(image)
             image_hash = create_average_hash(image)
@@ -273,6 +271,20 @@ def add_tag(photo_id: int):
             raw = f"#{raw}"
         link_tags(photo_id, [raw])
         flash(f"태그 '{raw}'를 추가했습니다.", "ok")
+
+    return redirect(url_for("result", photo_id=photo_id))
+
+
+@app.route("/photo/<int:photo_id>/tag/remove", methods=["POST"])
+def remove_tag(photo_id: int):
+    photo = get_photo(photo_id)
+    if photo is None:
+        return render_template("404.html"), 404
+
+    raw = request.form.get("tag", "").strip()
+    if raw:
+        unlink_tag(photo_id, raw)
+        flash(f"태그 '{raw}'를 삭제했습니다.", "ok")
 
     return redirect(url_for("result", photo_id=photo_id))
 

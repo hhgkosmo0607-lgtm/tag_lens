@@ -15,6 +15,24 @@ CLIP로 교체함. 오늘 다른 CNN들(indoor/daynight/animal)을 CLIP으로 �
 "사물"이라고 오답함(사용자 확인 후 알려진 한계로 남기고 넘어가기로 함). 기존 CNN처럼
 LOW_CONFIDENCE_THRESHOLD(0.6) 미만이면 "기타"로 보내는 안전장치는 그대로 유지 —
 CLIP도 확신 없는 사진까지 5개 장르 중 하나로 억지로 우기지 않게 하기 위함.
+
+2026-07-09 추가: 역광 군중 사진(줄 서있는 사람들 + 조명 켜진 부스, 야시장 스타일 구도)이
+"음식" 82.1%로 오분류되는 사례 발견. 군중/부스 부분만 따로 잘라 테스트해보니 각 부분은
+오히려 "인물"이 1등이었음(군중만 44.2%, 부스만 64.3%) — 특정 피사체가 아니라 "역광 군중
++ 조명 켜진 부스/카운터"라는 전체 구도 자체가 CLIP한테 노점상/야시장 음식 사진 스타일과
+통계적으로 겹친 것으로 추정. "person" 프롬프트 하나로는 이런 군중 구도를 잘 못 잡아서,
+day/night·indoor처럼 인물 카테고리에 프롬프트를 하나 더 추가(합산)해서 해결 — 회귀
+테스트 14건(원래 정탐 유지 확인용 6건 + 기존 기타 유지 확인용 5건 + 원래 고치려던
+5건 실패사례 재확인)에서 부작용 거의 없음 확인(간판 클로즈업 사진 하나만 사물 61.3%→
+58.5%로 살짝 내려가 사물→기타로 바뀌는 정도, 오답은 아니고 정보량만 약간 줄어듦).
+
+실제 82장 재분류에서 신규 오탐 발견: 같은 얼굴 그림(모나리자)이 여러 장 반복 인쇄된
+포스터 매대 사진이 "인물(군중)" 프롬프트에 낚여 기타→인물로 오분류됨(로짓 22.11,
+사람 얼굴이 격자로 반복된 패턴을 진짜 군중으로 착각). "인쇄물/포스터가 반복 진열된
+사진" 거부권 프롬프트(`_PRINTED_VETO_PROMPT`)를 추가해서, 이 로짓이 인물/군중
+로짓보다 높으면 군중 보너스만 취소(순수 "person" 프롬프트 점수는 유지)하도록 수정.
+모나리자 포스터(인물→기타 복구), 진짜 야시장 군중·노점 쇼핑 인물 2건(영향 없음),
+회귀 케이스 2건(자연/사물, 영향 없음) 총 5건으로 검증 완료.
 """
 
 from __future__ import annotations
@@ -33,7 +51,14 @@ _GENRE_PROMPTS = [
     "a photo of food",
     "a photo of an object or product",
     "a photo of a person",
+    "a photo of a crowd of people at a market or event",
 ]
+
+# "인물(군중)" 프롬프트가 실제 군중뿐 아니라 "같은 얼굴 이미지가 여러 번 반복 인쇄된
+# 진열물"(포스터 매대 등)에도 반응하는 부작용이 확인돼 추가한 거부권 프롬프트.
+# 원본(softmax 전) 로짓으로 비교해서, 이게 인물/군중 로짓보다 높으면 군중 보너스를
+# 취소하고 "person" 프롬프트 점수만 남긴다.
+_PRINTED_VETO_PROMPT = "a photo of printed posters, magazines, or the same picture repeated many times on a shelf"
 
 
 def _heuristic_predict(image) -> tuple[str, dict[str, float]]:
@@ -75,12 +100,22 @@ def predict_genre(image, model_path: str | None = None) -> tuple[str, dict[str, 
         model, processor = get_clip()
         pil_image = image_to_pil(image)
 
-        inputs = processor(text=_GENRE_PROMPTS, images=pil_image, return_tensors="pt", padding=True)
+        prompts = _GENRE_PROMPTS + [_PRINTED_VETO_PROMPT]
+        inputs = processor(text=prompts, images=pil_image, return_tensors="pt", padding=True)
         with torch.no_grad():
-            scores = model(**inputs).logits_per_image.softmax(dim=1)[0]
+            logits = model(**inputs).logits_per_image[0]
 
-        probs = {name: float(scores[idx]) for idx, name in enumerate(CLASS_NAMES)}
-        genre = CLASS_NAMES[int(scores.argmax())]
+        # 5개 장르 + "인물(군중)" 프롬프트(총 6개)만으로 softmax — 거부권 프롬프트는
+        # 이 분포에서 제외하고 원본 로짓 비교로만 별도 사용한다.
+        genre_scores = logits[: len(_GENRE_PROMPTS)].softmax(dim=0)
+        person_logit = float(logits[4])
+        crowd_logit = float(logits[len(_GENRE_PROMPTS) - 1])
+        printed_logit = float(logits[len(_GENRE_PROMPTS)])
+
+        probs = {name: float(genre_scores[idx]) for idx, name in enumerate(CLASS_NAMES)}
+        if printed_logit <= max(person_logit, crowd_logit):
+            probs["인물"] += float(genre_scores[len(CLASS_NAMES)])
+        genre = max(probs, key=probs.get)
     except Exception as e:
         print(f"[ERROR] Failed to predict genre via CLIP: {type(e).__name__}: {e}")
         return _heuristic_predict(image)

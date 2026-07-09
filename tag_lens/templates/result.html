@@ -70,7 +70,13 @@
                 <span class="label">Tags</span>
                 <div>
                     {% for tag in photo.tags %}
-                    <a class="tag" href="{{ url_for('gallery', tag=tag) }}">{{ tag }}</a>
+                    <span class="tag-removable">
+                        <a class="tag" href="{{ url_for('gallery', tag=tag) }}">{{ tag }}</a>
+                        <form method="post" action="{{ url_for('remove_tag', photo_id=photo.id) }}" class="tag-remove-form">
+                            <input type="hidden" name="tag" value="{{ tag }}">
+                            <button type="submit" class="tag-remove-btn" title="태그 삭제" onclick="return confirm('\'{{ tag }}\' 태그를 삭제할까요?')">×</button>
+                        </form>
+                    </span>
                     {% endfor %}
                 </div>
                 <form method="post" action="{{ url_for('add_tag', photo_id=photo.id) }}" class="tag-add-form">

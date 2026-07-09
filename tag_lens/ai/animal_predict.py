@@ -33,6 +33,20 @@ CLIP 적용 과정에서 실측으로 확인된 세 가지 함정과 대응:
    위 오탐 3건은 개/고양이/말/새가 다 고만고만하게 붙어있었음(gap 0.80~1.56) — 실제
    동물이 있으면 CLIP도 "이건 새고 개/고양이/말은 확실히 아님"으로 명확히 갈리는데,
    오탐은 여러 종 프롬프트에 막연히 다 조금씩 걸치기 때문. gap 2.5를 임계값으로 추가.
+
+4. 2026-07-09 추가: 위 세 방어를 다 통과한 "정탐"인데도, 동물이 화면 대비 점 하나
+   수준으로만 찍힌 경우(노을진 바다 사진 속 새 한 마리, 화면의 0.02% 미만)까지 태그가
+   붙는 게 과하다는 피드백 — CLIP은 전역 유사도만 재서 크기 정보가 아예 없어 이런
+   "곁다리 동물"을 못 거름(사진을 축소해서 확신도가 떨어지는지 시도했으나 실패 — 축소
+   강건성이 크기와 무관했고, 오히려 확실한 승마 사진이 32px 축소에서 확신도 폭락함).
+   대신 mediapipe Object Detector(EfficientDet-Lite0, COCO 90-class 사전학습, 이미
+   쓰던 mediapipe 라이브러리의 다른 Task)로 실제 바운딩박스를 얻어 크기를 직접 잼 —
+   낮은 임계값(0.02)으로 최대 재현율로 감지한 뒤, COCO 동물 카테고리 중 최대 박스
+   면적 비율을 계산. 실측: 점만 한 새는 0.047%(최선의 감지조차 이 정도), 확실한
+   동물 사진들(고양이 6장 4.4~71.2%, 말 1장은 이 모델이 정확히 "말"로는 잘 못 잡지만
+   그 자리의 박스 면적은 7.7%)은 전부 1% 이상 — 격차가 165배라 1%를 임계값으로 설정.
+   predict_animal()이 이미 종을 확정한 뒤 마지막 관문으로 추가, 감지기 자체가 실패하면
+   (모델 로드 불가 등) 안전하게 통과시킴(태그를 함부로 없애지 않음).
 """
 
 from __future__ import annotations
@@ -66,6 +80,59 @@ _ANIMAL_LOGIT_THRESHOLD = 23.0
 #     gap 3.68~5.68), 동물이 없는데 전체적인 색감/구도가 막연히 "동물틱"해서 걸리는
 #     사진은 개/고양이/말/새가 다 고만고만하게 붙어있음(오탐 실측 gap 0.80~1.56).
 _ANIMAL_SPECIES_GAP_THRESHOLD = 2.5
+
+# (4) 화면 대비 크기 — CLIP이 종까지 확정해도, 동물이 점 하나 수준으로 작으면
+#     (사진의 주제가 아니라 곁다리) 태그를 안 붙인다. mediapipe Object Detector로
+#     실제 바운딩박스 면적을 재서 판단(실측: 점만 한 새 0.047% vs 확실한 동물들 4.4%
+#     이상 — 165배 격차, 1%를 그 사이 임계값으로 설정).
+_ANIMAL_COCO_CATEGORIES = {
+    "bird", "cat", "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe",
+}
+_MIN_ANIMAL_AREA_RATIO = 0.01
+_OBJECT_DETECT_SCORE_THRESHOLD = 0.02  # 크기만 잴 거라 재현율 우선(정확한 종 분류는 CLIP이 이미 함)
+
+_OBJECT_DETECTOR = None
+
+
+def _get_object_detector():
+    global _OBJECT_DETECTOR
+    if _OBJECT_DETECTOR is None:
+        from pathlib import Path
+
+        import mediapipe as mp
+        from mediapipe.tasks import python as mp_tasks
+        from mediapipe.tasks.python import vision as mp_vision
+
+        model_path = Path(__file__).resolve().parent.parent / "models" / "efficientdet_lite0.tflite"
+        base_options = mp_tasks.BaseOptions(model_asset_path=str(model_path))
+        options = mp_vision.ObjectDetectorOptions(
+            base_options=base_options, score_threshold=_OBJECT_DETECT_SCORE_THRESHOLD, max_results=20
+        )
+        _OBJECT_DETECTOR = mp_vision.ObjectDetector.create_from_options(options)
+    return _OBJECT_DETECTOR
+
+
+def _passes_size_gate(image) -> bool:
+    """동물로 보이는 COCO 카테고리 박스 중 최대 면적 비율이 임계값 이상인지 확인한다.
+    감지기 자체가 실패하면(모델 로드 불가 등) 태그를 함부로 없애지 않도록 통과시킨다."""
+    try:
+        import cv2
+        import mediapipe as mp
+
+        h, w = image.shape[:2]
+        rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+        result = _get_object_detector().detect(mp_image)
+
+        best_ratio = 0.0
+        for detection in result.detections:
+            if detection.categories[0].category_name in _ANIMAL_COCO_CATEGORIES:
+                box = detection.bounding_box
+                best_ratio = max(best_ratio, (box.width * box.height) / (w * h))
+        return best_ratio >= _MIN_ANIMAL_AREA_RATIO
+    except Exception as e:
+        print(f"[ERROR] Failed to run animal size gate: {type(e).__name__}: {e}")
+        return True
 
 
 def predict_animal(image) -> str | None:
@@ -108,6 +175,8 @@ def predict_animal(image) -> str | None:
 
         best_conf = float(species_scores[best_idx])
         if best_conf < CONFIDENCE_THRESHOLD:
+            return None
+        if not _passes_size_gate(image):
             return None
         return _SPECIES_LABELS[best_idx]
     except Exception as e:
