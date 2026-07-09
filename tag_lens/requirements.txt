@@ -6,3 +6,5 @@ tensorflow==2.18.0
 kagglehub
 mediapipe
 datasets
+torch==2.13.0
+transformers==5.13.0

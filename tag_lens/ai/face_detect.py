@@ -19,12 +19,15 @@ from mediapipe.tasks.python import vision as mp_vision
 # blaze_face_full_range: 카메라에서 5m 이내 원거리/작은 얼굴까지 잡는 모델
 # (short-range 모델은 2m 이내 정면 위주라 Haar Cascade와 큰 차이가 없음)
 #
-# min_detection_confidence=0.6: full-range 모델은 재현율을 높이려고 오탐이 잦은데,
-# 특히 노을 진 구름처럼 유기적인 텍스처를 얼굴로 착각하는 사례가 실사용 중 확인됨
-# (신뢰도 0.53~0.54 수준). 실제 얼굴은 대부분 0.64 이상으로 나와서 0.6으로 올려 오탐을 줄인다.
+# min_detection_confidence=0.65: full-range 모델은 재현율을 높이려고 오탐이 잦은데,
+# 노을 진 구름(신뢰도 0.53~0.54)에 이어 2026-07-09에 실사용 중 새 오탐 발견 —
+# 벽에 붙은 사진 콜라주 속 자판기 버튼 패널(원형+대칭 격자 무늬)이 0.642로 잡힘.
+# 실측(실제 업로드 82장): 이 오탐(0.642)과 가장 가까운 진짜 얼굴(0.656, 인물 사진 확인됨)
+# 사이가 0.014밖에 안 나서, 그 중간인 0.65로 올려 둘을 가른다. 0.6→0.65로는 82장 중
+# 진짜 얼굴 검출 결과에 영향 없음을 확인(가장 낮은 진짜 얼굴도 0.656으로 여전히 통과).
 _MODEL_PATH = Path(__file__).resolve().parent.parent / "models" / "blaze_face_full_range.tflite"
 _base_options = mp_tasks.BaseOptions(model_asset_path=str(_MODEL_PATH))
-_options = mp_vision.FaceDetectorOptions(base_options=_base_options, min_detection_confidence=0.6)
+_options = mp_vision.FaceDetectorOptions(base_options=_base_options, min_detection_confidence=0.65)
 _FACE_DETECTOR = mp_vision.FaceDetector.create_from_options(_options)
 
 

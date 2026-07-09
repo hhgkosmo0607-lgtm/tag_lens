@@ -386,12 +386,28 @@ main { padding: 48px 0 80px; }
 
 .tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; }
 
+.tag-add-form { display: flex; gap: 6px; }
+
+.tag-add-form input[type="text"] {
+    font-size: .82rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+    background: var(--bg);
+    color: var(--ink);
+    outline: none;
+    transition: border-color .15s;
+    width: 160px;
+}
+
+.tag-add-form input[type="text"]:focus { border-color: var(--ink); }
+
 /* ─── Result page ───────────────────────────────────── */
 .result-layout {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 32px;
-    align-items: start;
+    align-items: center;
 }
 
 .result-image-wrapper {
@@ -407,6 +423,31 @@ main { padding: 48px 0 80px; }
     border-radius: var(--radius-md);
     box-shadow: var(--shadow);
     object-fit: contain;
+    cursor: default;
+}
+
+/* ─── Result image lightbox ─────────────────────────── */
+.lightbox-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    cursor: default;
+}
+
+.lightbox-overlay.active { display: flex; }
+
+.lightbox-image {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
+    cursor: default;
 }
 
 .result-meta { display: grid; gap: 12px; }

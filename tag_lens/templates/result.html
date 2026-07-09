@@ -4,7 +4,7 @@
 <div class="panel">
     <div class="result-layout">
         <div class="result-image-wrapper">
-            <img class="result-image" src="{{ url_for('uploads_proxy', filename=photo.filename) }}" alt="사진">
+            <img class="result-image" src="{{ url_for('uploads_proxy', filename=photo.filename) }}" alt="사진" onclick="openLightbox(this.src)">
         </div>
         <div class="result-meta">
             <div class="meta-row">
@@ -73,6 +73,10 @@
                     <a class="tag" href="{{ url_for('gallery', tag=tag) }}">{{ tag }}</a>
                     {% endfor %}
                 </div>
+                <form method="post" action="{{ url_for('add_tag', photo_id=photo.id) }}" class="tag-add-form">
+                    <input type="text" name="tag" placeholder="태그 추가 (예: 여행)" maxlength="30">
+                    <button type="submit" class="btn ghost sm">추가</button>
+                </form>
             </div>
 
             {% if probabilities %}
@@ -100,6 +104,22 @@
         </div>
     </div>
 </div>
+
+<div class="lightbox-overlay" id="lightbox-overlay" onclick="closeLightbox()">
+    <img class="lightbox-image" id="lightbox-image" src="" alt="확대된 사진">
+</div>
+<script>
+window.openLightbox = function(src) {
+    document.getElementById('lightbox-image').src = src;
+    document.getElementById('lightbox-overlay').classList.add('active');
+};
+window.closeLightbox = function() {
+    document.getElementById('lightbox-overlay').classList.remove('active');
+};
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeLightbox();
+});
+</script>
 
 {% if similar_photos %}
 <section style="margin-top:32px;">
