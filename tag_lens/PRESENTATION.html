@@ -394,7 +394,7 @@ table.spec td.mono{ font-family:var(--font-mono); font-size:.8rem; color:var(--a
     <div class="slide-inner">
       <div class="eyebrow">Overview</div>
       <h2>기술 스택 — 전부 사전학습 모델</h2>
-      <p class="lede">이 프로젝트에 직접 재학습시킨 모델은 하나도 없습니다. 사전학습 모델을 그대로 쓰거나, 프롬프트 문장으로 즉시 판단시킵니다.</p>
+      <p class="lede">모델을 처음부터 학습시키는 대신, 대규모 사전학습 모델을 프롬프트 엔지니어링과 다층 검증 로직으로 정교하게 통제하는 아키텍처를 택했습니다.</p>
       <div class="cards3">
         <div class="card">
           <h3>분류 — CLIP</h3>
@@ -410,7 +410,7 @@ table.spec td.mono{ font-family:var(--font-mono); font-size:.8rem; color:var(--a
         </div>
       </div>
       <div class="stat-row">
-        <div class="stat"><div class="num accent">0</div><div class="cap">직접 학습시킨 모델</div></div>
+        <div class="stat"><div class="num accent">0</div><div class="cap">재학습 파이프라인 — 대신 프롬프트/검증 로직에 집중</div></div>
         <div class="stat"><div class="num">Flask + SQLite</div><div class="cap">백엔드 / DB</div></div>
       </div>
     </div>
