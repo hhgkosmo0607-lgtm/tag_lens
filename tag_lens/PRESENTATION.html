@@ -1,0 +1,1029 @@
+<title>TAG_LENS — 발표 슬라이드</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+/* ============================================================
+   TAG_LENS 발표 슬라이드
+   디자인 토큰: tag_lens 웹사이트(static/css/style.css)의 팔레트를 그대로 계승.
+   ============================================================ */
+:root{
+  --bg:        #fafaf8;
+  --surface:   #ffffff;
+  --ink:       #111110;
+  --ink-2:     #6b6b67;
+  --line:      #e8e8e4;
+  --tag-bg:    #f0f0ec;
+  --code-bg:   #f4f3ee;
+  --accent:    #f59e0b;
+  --accent-ink:#8a5a06;
+  --danger:    #b91c1c;
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --shadow: 0 1px 4px rgba(0,0,0,.06), 0 4px 20px rgba(0,0,0,.07);
+  --font-sans: "Pretendard", "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:        #101010;
+    --surface:   #181815;
+    --ink:       #f3f2ee;
+    --ink-2:     #9a9a92;
+    --line:      #2b2b26;
+    --tag-bg:    #1e1e19;
+    --code-bg:   #16160f;
+    --accent:    #f6b13b;
+    --accent-ink:#f6b13b;
+    --shadow: 0 1px 4px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:        #101010;
+  --surface:   #181815;
+  --ink:       #f3f2ee;
+  --ink-2:     #9a9a92;
+  --line:      #2b2b26;
+  --tag-bg:    #1e1e19;
+  --code-bg:   #16160f;
+  --accent:    #f6b13b;
+  --accent-ink:#f6b13b;
+  --shadow: 0 1px 4px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.5);
+}
+:root[data-theme="light"]{
+  --bg:        #fafaf8;
+  --surface:   #ffffff;
+  --ink:       #111110;
+  --ink-2:     #6b6b67;
+  --line:      #e8e8e4;
+  --tag-bg:    #f0f0ec;
+  --code-bg:   #f4f3ee;
+  --accent:    #f59e0b;
+  --accent-ink:#8a5a06;
+  --shadow: 0 1px 4px rgba(0,0,0,.06), 0 4px 20px rgba(0,0,0,.07);
+}
+
+*,*::before,*::after{ box-sizing:border-box; margin:0; padding:0; }
+html{ scroll-behavior:smooth; }
+@media (prefers-reduced-motion: reduce){
+  html{ scroll-behavior:auto; }
+  *,*::before,*::after{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
+}
+
+body{
+  font-family:var(--font-sans);
+  background:var(--bg);
+  color:var(--ink);
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+
+.deck{
+  height:100vh;
+  overflow-y:auto;
+  scroll-snap-type:y mandatory;
+}
+
+.slide{
+  min-height:100vh;
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:stretch;
+  padding: clamp(28px,6vw,72px) clamp(20px,7vw,96px);
+  scroll-snap-align:start;
+  scroll-snap-stop:always;
+  border-bottom:1px solid var(--line);
+  position:relative;
+}
+
+.slide-inner{ max-width:1180px; margin:0 auto; width:100%; }
+
+.eyebrow{
+  font-size:.74rem;
+  font-weight:700;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--accent-ink);
+  margin-bottom:14px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.eyebrow::before{
+  content:"";
+  width:16px; height:1px;
+  background:var(--accent);
+  display:inline-block;
+}
+
+.slide h2{
+  font-size:clamp(1.5rem,3.2vw,2.3rem);
+  font-weight:700;
+  letter-spacing:-.02em;
+  line-height:1.25;
+  text-wrap:balance;
+  margin-bottom:16px;
+}
+
+.lede{
+  color:var(--ink-2);
+  font-size:1.02rem;
+  max-width:640px;
+  margin-bottom:8px;
+}
+
+.grid-2{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:clamp(24px,4vw,48px);
+  align-items:start;
+  margin-top:24px;
+}
+@media (max-width:860px){
+  .grid-2{ grid-template-columns:1fr; }
+}
+
+.narrative{ display:flex; flex-direction:column; gap:14px; }
+.narrative p{ font-size:.94rem; color:var(--ink-2); }
+.narrative p strong{ color:var(--ink); font-weight:600; }
+.narrative ol, .narrative ul{ padding-left:1.1em; display:flex; flex-direction:column; gap:10px; }
+.narrative li{ font-size:.92rem; color:var(--ink-2); }
+.narrative li strong{ color:var(--ink); font-weight:600; }
+.narrative li::marker{ color:var(--accent-ink); font-weight:700; }
+
+.card{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius-lg);
+  padding:24px;
+  box-shadow:var(--shadow);
+}
+
+.codeblock{
+  background:var(--code-bg);
+  border:1px solid var(--line);
+  border-radius:var(--radius-md);
+  padding:18px 22px;
+  overflow-x:auto;
+  box-shadow:var(--shadow);
+}
+.codeblock .filename{
+  font-family:var(--font-mono);
+  font-size:.7rem;
+  color:var(--ink-2);
+  letter-spacing:.03em;
+  margin-bottom:10px;
+  display:block;
+}
+.codeblock pre{
+  font-family:var(--font-mono);
+  font-size:.8rem;
+  line-height:1.7;
+  color:var(--ink);
+  white-space:pre;
+}
+.tok-num{ color:var(--accent-ink); font-weight:700; }
+.tok-com{ color:var(--ink-2); font-style:italic; }
+
+.stat-row{ display:flex; gap:clamp(16px,4vw,40px); flex-wrap:wrap; margin-top:20px; }
+.stat{ min-width:120px; }
+.stat .num{
+  font-size:clamp(1.6rem,3vw,2.2rem);
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+  letter-spacing:-.02em;
+}
+.stat .num.accent{ color:var(--accent-ink); }
+.stat .cap{ font-size:.78rem; color:var(--ink-2); margin-top:2px; }
+
+.pill{
+  display:inline-flex;
+  align-items:center;
+  font-size:.76rem;
+  font-weight:600;
+  background:var(--tag-bg);
+  color:var(--ink);
+  border-radius:99px;
+  padding:5px 13px;
+  margin:3px 4px 3px 0;
+}
+.pill.accent{ background:rgba(245,158,11,.15); color:var(--accent-ink); }
+
+.cards3{ display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-top:24px; }
+@media (max-width:900px){ .cards3{ grid-template-columns:1fr; } }
+.cards3 .card h3{ font-size:.82rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; margin-bottom:10px; color:var(--ink); }
+.cards3 .card p{ font-size:.86rem; color:var(--ink-2); }
+
+.gates{ display:flex; flex-direction:column; gap:14px; margin-top:24px; }
+.gate{
+  display:grid;
+  grid-template-columns:56px 1fr;
+  gap:18px;
+  align-items:start;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius-md);
+  padding:16px 20px;
+  box-shadow:var(--shadow);
+}
+.gate .n{
+  font-family:var(--font-mono);
+  font-size:1.3rem;
+  font-weight:700;
+  color:var(--accent-ink);
+  font-variant-numeric:tabular-nums;
+}
+.gate h4{ font-size:.94rem; font-weight:700; margin-bottom:4px; }
+.gate p{ font-size:.84rem; color:var(--ink-2); }
+.gate .fail{ font-size:.78rem; color:var(--danger); margin-top:6px; }
+
+table.spec{ width:100%; border-collapse:collapse; margin-top:20px; font-size:.86rem; }
+table.spec th{
+  text-align:left;
+  font-size:.72rem;
+  font-weight:700;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--ink-2);
+  padding:10px 14px;
+  border-bottom:1px solid var(--line);
+}
+table.spec td{ padding:12px 14px; border-bottom:1px solid var(--line); color:var(--ink); vertical-align:top; }
+table.spec td.mono{ font-family:var(--font-mono); font-size:.8rem; color:var(--accent-ink); white-space:nowrap; }
+.table-wrap{ overflow-x:auto; }
+
+/* ── diagram ─────────────────────────────────────── */
+.flow{ display:flex; flex-direction:column; align-items:center; margin-top:8px; }
+.flow-box{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius-md);
+  padding:9px 20px;
+  font-size:.8rem;
+  font-weight:600;
+  text-align:center;
+  box-shadow:var(--shadow);
+  white-space:nowrap;
+}
+.flow-box.dim{ background:var(--tag-bg); font-weight:500; color:var(--ink-2); font-size:.72rem; box-shadow:none; border-style:dashed; }
+.flow-arrow{ color:var(--ink-2); font-size:.95rem; line-height:1; padding:3px 0; }
+.flow-branch{
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:22px; width:100%; max-width:600px; margin:0 auto;
+}
+.flow-branch-col{ display:flex; flex-direction:column; align-items:center; gap:0; }
+.flow-branch-col .flow-box{ font-size:.74rem; padding:8px 12px; }
+.flow-tag{ font-size:.66rem; color:var(--ink-2); text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px; }
+
+/* ── nav chrome ──────────────────────────────────── */
+.progress-rail{
+  position:fixed; top:0; left:0; right:0; height:3px;
+  background:var(--line); z-index:50;
+}
+.progress-fill{
+  height:100%; width:0%; background:var(--accent);
+  transition:width .3s ease;
+}
+.deck-nav{
+  position:fixed; bottom:22px; right:26px; z-index:50;
+  display:flex; align-items:center; gap:10px;
+}
+.deck-nav button{
+  width:38px; height:38px;
+  border-radius:50%;
+  border:1px solid var(--line);
+  background:var(--surface);
+  color:var(--ink);
+  font-size:1rem;
+  cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:var(--shadow);
+  transition:transform .1s, background .15s;
+}
+.deck-nav button:hover{ background:var(--tag-bg); }
+.deck-nav button:active{ transform:scale(.93); }
+.deck-nav button:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+.counter{
+  font-family:var(--font-mono);
+  font-size:.78rem;
+  color:var(--ink-2);
+  min-width:52px;
+  text-align:center;
+  font-variant-numeric:tabular-nums;
+}
+.brandmark{
+  position:fixed; top:16px; left:26px; z-index:50;
+  font-size:.74rem; font-weight:700; letter-spacing:.1em;
+  color:var(--ink-2); text-transform:uppercase;
+}
+.hint{
+  position:absolute; bottom:28px; left:50%; transform:translateX(-50%);
+  font-size:.76rem; color:var(--ink-2);
+  animation:pulse 2.4s ease-in-out infinite;
+}
+@keyframes pulse{ 0%,100%{opacity:.5;} 50%{opacity:1;} }
+
+/* ── title slide ─────────────────────────────────── */
+.slide--title{ align-items:center; text-align:center; }
+.title-mark{
+  width:64px; height:64px; border-radius:var(--radius-md);
+  background:var(--ink); color:var(--bg);
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.6rem; font-weight:800; margin:0 auto 28px;
+}
+.slide--title h1{
+  font-size:clamp(2.6rem,8vw,5rem);
+  font-weight:800; letter-spacing:-.03em;
+  margin-bottom:18px;
+}
+.slide--title .sub{ font-size:1.1rem; color:var(--ink-2); max-width:560px; margin:0 auto 28px; }
+.slide--title .tags{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+
+/* ── closing slide ───────────────────────────────── */
+.slide--closing{ align-items:center; text-align:center; }
+.lessons{ display:flex; flex-direction:column; gap:28px; max-width:760px; margin:32px auto 0; text-align:left; }
+.lesson{ display:grid; grid-template-columns:44px 1fr; gap:18px; align-items:start; }
+.lesson .n{ font-family:var(--font-mono); font-size:1.4rem; font-weight:700; color:var(--accent-ink); }
+.lesson h3{ font-size:1.05rem; font-weight:700; margin-bottom:6px; }
+.lesson p{ font-size:.9rem; color:var(--ink-2); }
+
+/* ── qna ──────────────────────────────────────────── */
+.qna-list{ display:flex; flex-direction:column; gap:14px; margin-top:20px; }
+.qna-item{
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:var(--radius-md); padding:16px 20px; box-shadow:var(--shadow);
+}
+.qna-item .q{ font-size:.9rem; font-weight:700; margin-bottom:6px; }
+.qna-item .a{ font-size:.84rem; color:var(--ink-2); }
+
+.two-col-slide-scroll .slide-inner{ max-height:calc(100vh - 100px); overflow-y:auto; padding-right:6px; }
+</style>
+
+<div class="progress-rail"><div class="progress-fill" id="progressFill"></div></div>
+<div class="brandmark">TAG_LENS · 발표</div>
+<div class="deck-nav">
+  <button id="prevBtn" aria-label="이전 슬라이드">&larr;</button>
+  <span class="counter" id="counter">01 / 19</span>
+  <button id="nextBtn" aria-label="다음 슬라이드">&rarr;</button>
+</div>
+
+<main class="deck" id="deck">
+
+  <!-- 1. TITLE -->
+  <section class="slide slide--title" id="s1">
+    <div class="slide-inner">
+      <div class="title-mark">#</div>
+      <div class="eyebrow" style="justify-content:center;">AI 포토 갤러리</div>
+      <h1>TAG_LENS</h1>
+      <p class="sub">사진을 올리면 AI가 장르·주야간·실내외·동물을 판단해 태그를 붙입니다.<br>재학습 없이, 여러 모델이 서로를 검증하는 파이프라인.</p>
+      <div class="tags">
+        <span class="pill accent">CLIP 제로샷</span>
+        <span class="pill">mediapipe</span>
+        <span class="pill">MobileNetV2</span>
+        <span class="pill">Flask · SQLite</span>
+      </div>
+    </div>
+    <div class="hint">↓ 스크롤 또는 방향키로 이동</div>
+  </section>
+
+  <!-- 2. TECH STACK -->
+  <section class="slide" id="s2">
+    <div class="slide-inner">
+      <div class="eyebrow">Overview</div>
+      <h2>기술 스택 — 전부 사전학습 모델</h2>
+      <p class="lede">이 프로젝트에 직접 재학습시킨 모델은 하나도 없습니다. 사전학습 모델을 그대로 쓰거나, 프롬프트 문장으로 즉시 판단시킵니다.</p>
+      <div class="cards3">
+        <div class="card">
+          <h3>분류 — CLIP</h3>
+          <p><code>clip-vit-base-patch32</code><br>장르 · 동물 · 주야간 · 실내외 판별을 전부 제로샷으로 처리</p>
+        </div>
+        <div class="card">
+          <h3>검출 — mediapipe</h3>
+          <p>BlazeFace(얼굴), EfficientDet-Lite0(동물 크기) — 구글 사전학습 모델 그대로 사용</p>
+        </div>
+        <div class="card">
+          <h3>임베딩 — MobileNetV2</h3>
+          <p>ImageNet 사전학습, 1280차원 벡터로 유사 사진 검색</p>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat"><div class="num accent">0</div><div class="cap">직접 학습시킨 모델</div></div>
+        <div class="stat"><div class="num">Flask + SQLite</div><div class="cap">백엔드 / DB</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. PIPELINE DIAGRAM -->
+  <section class="slide" id="s3">
+    <div class="slide-inner">
+      <div class="eyebrow">Architecture</div>
+      <h2>파이프라인 전체 흐름</h2>
+      <div class="flow">
+        <div class="flow-box">사진 업로드</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-box dim">이미지 로드 &amp; 전처리 (OpenCV)</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-box">얼굴 감지 (mediapipe + CLIP 2차 검증)</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-branch">
+          <div class="flow-branch-col">
+            <div class="flow-tag">얼굴 있음</div>
+            <div class="flow-box">장르 = 인물</div>
+          </div>
+          <div class="flow-branch-col">
+            <div class="flow-tag">얼굴 없음</div>
+            <div class="flow-box">CLIP 장르 분류 (확신도&lt;60%→기타)</div>
+          </div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-box">동물 판별 (CLIP 제로샷, 4단계 게이트)</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-box dim">장르 보정 (동물 있고 얼굴 없으면 → 기타)</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-branch">
+          <div class="flow-branch-col">
+            <div class="flow-box">주야간 판별<br>(EXIF 우선 + CLIP 폴백)</div>
+          </div>
+          <div class="flow-branch-col">
+            <div class="flow-box">실내/실외 판별<br>(CLIP 제로샷)</div>
+          </div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-box dim">OpenCV 특징 분석 · 해싱 · 임베딩 추출</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-box">태그 생성 → SQLite 저장 → 결과 화면</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. FACE DETECTION -->
+  <section class="slide" id="s4">
+    <div class="slide-inner">
+      <div class="eyebrow">코드 — ai/face_detect.py</div>
+      <h2>얼굴 감지: mediapipe + CLIP 2차 검증</h2>
+      <div class="grid-2">
+        <div class="narrative">
+          <p><strong>mediapipe</strong>는 구글의 사전학습 얼굴 검출 라이브러리입니다. 카메라 앱에서 얼굴에 네모 박스가 뜨는 것과 같은 원리입니다.</p>
+          <p>단독으로는 벽에 붙은 원형 물체(화재경보기 벨)를 신뢰도 0.696으로 얼굴이라 오탐했는데, 이 값이 실제 얼굴 일부(0.656)보다 오히려 높았습니다.</p>
+          <p>검출 박스를 잘라 <strong>CLIP</strong>에게 "이게 진짜 얼굴 클로즈업이냐"고 재확인시키자 진짜 얼굴은 전부 0.270 이상, 오탐은 0.049로 깨끗하게 갈렸습니다.</p>
+          <div class="stat-row">
+            <div class="stat"><div class="num accent">0.65</div><div class="cap">얼굴 검출 임계값</div></div>
+            <div class="stat"><div class="num accent">0.15</div><div class="cap">CLIP 재검증 임계값</div></div>
+          </div>
+        </div>
+        <div class="codeblock">
+          <span class="filename">ai/face_detect.py</span>
+          <pre>_options = mp_vision.FaceDetectorOptions(
+    base_options=_base_options,
+    min_detection_confidence=<span class="tok-num">0.65</span>
+)
+
+_FACE_CROP_PROMPTS = [
+    "a close-up photo of a human face",
+    "a photo of a round object, sign,
+     button, or device that is not a face",
+]
+_FACE_CROP_VERIFY_THRESHOLD = <span class="tok-num">0.15</span>
+
+<span class="tok-com"># 60% 여백 — 너무 딱 맞게 자르면</span>
+<span class="tok-com"># CLIP도 맥락(머리카락/목)을 못 봄</span>
+def _verify_face_crop(image, box):
+    x, y, bw, bh = box
+    mx, my = int(bw * <span class="tok-num">0.6</span>), int(bh * <span class="tok-num">0.6</span>)
+    crop = image[y0:y1, x0:x1]
+    scores = model(...).logits_per_image \
+                  .softmax(dim=1)[0]
+    return float(scores[0]) &gt;= _FACE_CROP_VERIFY_THRESHOLD</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. CLIP CONCEPT -->
+  <section class="slide" id="s5">
+    <div class="slide-inner">
+      <div class="eyebrow">Concept</div>
+      <h2>CLIP이란? — 사진과 문장을 함께 이해하는 AI</h2>
+      <div class="grid-2">
+        <div class="narrative">
+          <p>사진 한 장과 문장 여러 개를 같이 넣으면, 사진이 어느 문장과 가장 잘 어울리는지 점수로 알려주는 모델입니다.</p>
+          <p>인터넷의 수억 장 <strong>"사진+설명" 쌍</strong>으로 미리 학습되어 있어서, 우리가 카테고리를 새로 가르칠 필요 없이 <strong>문장만 바꾸면 즉시 새 기준으로 판단</strong>할 수 있습니다.</p>
+          <p>이걸 <strong>제로샷(zero-shot)</strong>이라 부릅니다 — 한 번도 직접 훈련시키지 않은 작업도 바로 할 수 있다는 뜻입니다.</p>
+          <p>이 프로젝트의 <strong>모든 분류 작업</strong>(장르 · 동물 · 주야간 · 실내외)이 이 방식으로 동작합니다.</p>
+        </div>
+        <div class="card">
+          <h3 style="font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);margin-bottom:16px;">예시 — 장르 판단</h3>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:.86rem;">"a photo of nature landscape"</span>
+              <span style="font-family:var(--font-mono);font-size:.8rem;color:var(--ink-2);">12%</span>
+            </div>
+            <div style="height:6px;background:var(--tag-bg);border-radius:99px;overflow:hidden;"><div style="width:12%;height:100%;background:var(--ink-2);"></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:.86rem;">"a photo of a city street"</span>
+              <span style="font-family:var(--font-mono);font-size:.8rem;color:var(--accent-ink);font-weight:700;">78%</span>
+            </div>
+            <div style="height:6px;background:var(--tag-bg);border-radius:99px;overflow:hidden;"><div style="width:78%;height:100%;background:var(--accent);"></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:.86rem;">"a photo of food"</span>
+              <span style="font-family:var(--font-mono);font-size:.8rem;color:var(--ink-2);">6%</span>
+            </div>
+            <div style="height:6px;background:var(--tag-bg);border-radius:99px;overflow:hidden;"><div style="width:6%;height:100%;background:var(--ink-2);"></div></div>
+          </div>
+          <p style="font-size:.78rem;color:var(--ink-2);margin-top:16px;">→ 가장 높은 점수의 문장을 정답으로 채택 (78% ≥ 60% 임계값 → "도시" 확정)</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. GENRE CLASSIFICATION -->
+  <section class="slide" id="s6">
+    <div class="slide-inner">
+      <div class="eyebrow">코드 — ai/genre_predict.py</div>
+      <h2>장르 분류: CLIP 5-class 제로샷</h2>
+      <div class="grid-2">
+        <div class="narrative">
+          <p>얼굴이 있으면 바로 "인물" 확정. 없으면 CLIP에게 문장들을 주고 가장 잘 맞는 걸 고르게 합니다.</p>
+          <p>확신도가 <strong>60% 미만</strong>이면 억지로 고르지 않고 "기타"로 분류합니다 — 모르겠으면 모른다고 하는 게 더 정직한 결과입니다.</p>
+          <p>"인물" 문장 하나만으로는 역광 군중 사진을 못 잡아서(전체 구도로는 "음식" 82%로 오분류) <strong>"군중" 문장을 추가</strong>해 점수를 합산했습니다.</p>
+        </div>
+        <div class="codeblock">
+          <span class="filename">ai/genre_predict.py</span>
+          <pre>_GENRE_PROMPTS = [
+    "a photo of nature, such as a forest,
+     mountain, or beach landscape",
+    "a photo of a city or urban street scene",
+    "a photo of food",
+    "a photo of an object or product",
+    "a photo of a person",
+    "a photo of a crowd of people
+     at a market or event",
+]
+LOW_CONFIDENCE_THRESHOLD = <span class="tok-num">0.6</span>
+
+...
+if probs[genre] &lt; LOW_CONFIDENCE_THRESHOLD:
+    genre = "기타"</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. GENRE CORRECTION -->
+  <section class="slide" id="s7">
+    <div class="slide-inner">
+      <div class="eyebrow">코드 — ai/genre_predict.py</div>
+      <h2>장르 보정: 동물 감지 결과로 되돌리기</h2>
+      <div class="grid-2">
+        <div class="narrative">
+          <p>동물이 감지됐는데 얼굴이 없으면 장르를 다시 "기타"로 되돌립니다.</p>
+          <p>장르 분류 AI가 "사람 얼굴 클로즈업" 학습 감각을 갖고 있어서, 고양이 얼굴 클로즈업을 사람으로 착각하는 경우(실측: <strong>96.6%</strong> 확신도로 "인물" 오판)가 있었습니다.</p>
+          <p><code>face_count == 0</code> 조건이 핵심 — 진짜 사람 얼굴이 검출됐다면(반려동물과 함께 찍은 사진 등) "인물" 판정은 근거가 있으니 보정하지 않습니다.</p>
+        </div>
+        <div class="codeblock">
+          <span class="filename">ai/genre_predict.py</span>
+          <pre>def resolve_genre_with_animal(
+    genre: str,
+    animal: str | None,
+    face_count: int
+) -&gt; str:
+    if (
+        genre != "기타"
+        and face_count == <span class="tok-num">0</span>
+        and animal is not None
+    ):
+        return "기타"
+    return genre</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. DAY/NIGHT -->
+  <section class="slide" id="s8">
+    <div class="slide-inner">
+      <div class="eyebrow">코드 — ai/daynight_predict.py</div>
+      <h2>주야간 판별: EXIF가 CLIP보다 우선</h2>
+      <div class="grid-2">
+        <div class="narrative">
+          <p><strong>EXIF</strong>는 사진 파일에 같이 저장되는 보이지 않는 메타데이터입니다 — 촬영 시각, 카메라 기종 같은 정보가 들어있습니다.</p>
+          <p>픽셀이 밝은지 AI로 추측하는 것보다, 사진에 이미 기록된 <strong>실제 촬영 시각</strong>을 읽는 게 훨씬 정확합니다.</p>
+          <p>EXIF가 있으면 그 시각이 06~18시 사이인지만 보고 바로 확정하고, EXIF가 없을 때만 CLIP 제로샷으로 대체합니다.</p>
+        </div>
+        <div class="codeblock">
+          <span class="filename">ai/daynight_predict.py</span>
+          <pre>DAY_START_HOUR = <span class="tok-num">6</span>
+DAY_END_HOUR   = <span class="tok-num">18</span>
+
+def daynight_from_hour(hour: int):
+    label = (
+        "주간"
+        if DAY_START_HOUR &lt;= hour &lt; DAY_END_HOUR
+        else "야간"
+    )
+    return label, {...}</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9. INDOOR/OUTDOOR -->
+  <section class="slide" id="s9">
+    <div class="slide-inner">
+      <div class="eyebrow">코드 — ai/indoor_predict.py</div>
+      <h2>실내/실외 판별: 프롬프트의 관점이 답이었다</h2>
+      <div class="grid-2">
+        <div class="narrative">
+          <p>"무엇이 보이는가"가 아니라 "<strong>카메라가 어디 있는가</strong>"로 질문을 바꾼 게 핵심이었습니다.</p>
+          <div class="stat-row">
+            <div class="stat"><div class="num" style="color:var(--danger);">89.2%</div><div class="cap">변경 전 — "실내" 오탐 확신도</div></div>
+            <div class="stat"><div class="num accent">58.2%</div><div class="cap">변경 후 — 임계값 미만, 태그 제거</div></div>
+          </div>
+          <p style="margin-top:6px;">밤에 조명 켜진 매장 앞 사진이 "장면에 실내 디테일이 보인다"는 프롬프트엔 반응했지만, "카메라 위치"를 묻는 프롬프트엔 반응하지 않았습니다.</p>
+        </div>
+        <div class="codeblock">
+          <span class="filename">ai/indoor_predict.py</span>
+          <pre><span class="tok-com"># 실패: "실내스러운 디테일이 보이는가"</span>
+<span class="tok-com"># 성공: "카메라/촬영자의 위치"를 명시</span>
+_INDOOR_PROMPTS = [
+    "a photo taken from inside a room
+     or building, surrounded by walls
+     and a ceiling",
+    "the camera is indoors, inside
+     an enclosed space",
+]
+_OUTDOOR_PROMPTS = [
+    "a photo taken while standing
+     outdoors on a street, sidewalk,
+     or open area",
+    "the camera is outdoors in the
+     open air, not enclosed by walls",
+]</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10. OPENCV / HASH / EMBEDDING -->
+  <section class="slide" id="s10">
+    <div class="slide-inner">
+      <div class="eyebrow">Concept</div>
+      <h2>전통적 이미지 처리 3가지</h2>
+      <p class="lede">여기서부터는 AI가 아니라 고전적인 이미지 처리 알고리즘입니다.</p>
+      <div class="cards3">
+        <div class="card">
+          <h3>특징 분석</h3>
+          <p>OpenCV로 밝기 중앙값, 색상 히스토그램(따뜻한/차가운 톤), 픽셀별 채널 표준편차로 흑백 여부 계산</p>
+        </div>
+        <div class="card">
+          <h3>중복 감지</h3>
+          <p>Average Hash — 사진을 8×8 픽셀로 축소해 밝기 패턴 "지문"을 만들어 중복 업로드를 잡음</p>
+        </div>
+        <div class="card">
+          <h3>유사 사진 검색</h3>
+          <p>MobileNetV2로 사진을 1280차원 벡터로 변환. 비슷한 사진일수록 벡터가 가깝게 나오는 성질 이용</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11. TAG GENERATION -->
+  <section class="slide" id="s11">
+    <div class="slide-inner">
+      <div class="eyebrow">코드 — ai/tagging.py</div>
+      <h2>태그 생성: 순수 로직, AI 아님</h2>
+      <div class="grid-2">
+        <div class="narrative">
+          <p>지금까지 나온 모든 AI 판단 결과를 이 함수 하나로 모아서 태그를 만듭니다.</p>
+          <p>AI 모델이 바뀌어도 태그 생성 규칙은 안 바뀌고, 업로드 경로와 재분류 스크립트가 이 함수 하나를 공유합니다.</p>
+          <p>결과는 <strong>SQLite</strong>의 photo / tag / photo_tag 3개 테이블(Many-to-Many)에 저장됩니다.</p>
+        </div>
+        <div class="codeblock">
+          <span class="filename">ai/tagging.py</span>
+          <pre>def generate_tags(genre, daynight,
+    is_bw=False, indoor=None,
+    color_tone=None, animal=None):
+
+    tags = set()
+    tags.update(genre_map.get(genre, []))
+
+    if daynight is not None:
+        tags.add(f"#{daynight}")
+        if genre in ("도시","자연") \
+           and daynight == "야간":
+            tags.add("#야경")
+
+    if is_bw:
+        tags.add("#흑백")
+    elif color_tone is not None:
+        tags.add(f"#{color_tone}")
+
+    if indoor == "실내":
+        tags.add("#실내")
+    if animal is not None:
+        tags.add(f"#{animal}")
+
+    return sorted(tags)</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12. ANIMAL GATES OVERVIEW -->
+  <section class="slide" id="s12">
+    <div class="slide-inner">
+      <div class="eyebrow">심화 — ai/animal_predict.py</div>
+      <h2>동물 판별: 왜 게이트가 4개나 필요했나</h2>
+      <p class="lede">각 단계는 "이전 단계를 통과한 새로운 오탐"을 막기 위해 순서대로 추가됐습니다.</p>
+      <div class="gates">
+        <div class="gate">
+          <div class="n">01</div>
+          <div><h4>상대 비교 — 동물 vs 비동물</h4><p>softmax로 "동물이 비동물보다 그럴듯한가" 비교</p><div class="fail">실패 사례: 커피잔 사진이 "새" 96%로 오탐 (약한 신호가 상대 비교에서 부풀려짐)</div></div>
+        </div>
+        <div class="gate">
+          <div class="n">02</div>
+          <div><h4>절대 로짓 임계값 — 23.0</h4><p>softmax 전 원본 유사도 점수가 절대적으로 강해야 함</p><div class="fail">근거: 정탐 최고 로짓 24~28점대 / 오탐은 21점 이하</div></div>
+        </div>
+        <div class="gate">
+          <div class="n">03</div>
+          <div><h4>종(species) 로짓 gap — 2.5</h4><p>1등 종과 2등 종의 점수 차이가 커야 함</p><div class="fail">근거: 정탐 gap 3.68~5.68 / 오탐(야경 반사 등) gap 0.80~1.56</div></div>
+        </div>
+        <div class="gate">
+          <div class="n">04</div>
+          <div><h4>화면 대비 크기 게이트 — 1%</h4><p>mediapipe Object Detector로 실제 바운딩박스 면적 측정</p><div class="fail">근거: 점만 한 새 0.047% vs 확실한 동물 4.4%+ (165배 격차)</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13. ANIMAL CODE -->
+  <section class="slide" id="s13">
+    <div class="slide-inner">
+      <div class="eyebrow">코드 — ai/animal_predict.py</div>
+      <h2>동물 판별: 4중 게이트 코드</h2>
+      <div class="grid-2">
+        <div class="codeblock">
+          <span class="filename">ai/animal_predict.py</span>
+          <pre>_ANIMAL_LOGIT_THRESHOLD = <span class="tok-num">23.0</span>
+_ANIMAL_SPECIES_GAP_THRESHOLD = <span class="tok-num">2.5</span>
+_MIN_ANIMAL_AREA_RATIO = <span class="tok-num">0.01</span>
+
+best_idx = species_logits.argmax()
+best_logit = species_logits[best_idx]
+animal_presence = species_scores.sum()
+nonanimal_presence = nonanimal_scores.sum()
+second_logit = sorted(
+    species_logits.tolist())[-2]
+species_gap = best_logit - second_logit
+
+if (
+    best_logit &lt; _ANIMAL_LOGIT_THRESHOLD
+    or animal_presence &lt;= nonanimal_presence
+    or species_gap &lt; _ANIMAL_SPECIES_GAP_THRESHOLD
+):
+    return None
+...
+if not _passes_size_gate(image):
+    return None</pre>
+        </div>
+        <div class="codeblock">
+          <span class="filename">ai/animal_predict.py — 크기 게이트</span>
+          <pre>def _passes_size_gate(image):
+    <span class="tok-com"># mediapipe Object Detector로</span>
+    <span class="tok-com"># 실제 바운딩박스 크기를 측정</span>
+    result = _get_object_detector() \
+                .detect(mp_image)
+
+    best_ratio = <span class="tok-num">0.0</span>
+    for d in result.detections:
+        if d.categories[0].category_name \
+           in _ANIMAL_COCO_CATEGORIES:
+            box = d.bounding_box
+            ratio = (box.width * box.height) \
+                    / (w * h)
+            best_ratio = max(best_ratio, ratio)
+
+    return best_ratio &gt;= _MIN_ANIMAL_AREA_RATIO</pre>
+        </div>
+      </div>
+      <p class="lede" style="margin-top:20px;">"한 번에 완벽한 임계값을 찾은 게 아니라, 실패 사례를 계속 모아 새로운 신호를 발굴해나간 반복 과정"이었다는 게 이 코드가 보여주는 것입니다.</p>
+    </div>
+  </section>
+
+  <!-- 14. EXIF SUBIFD -->
+  <section class="slide" id="s14">
+    <div class="slide-inner">
+      <div class="eyebrow">심화 — ai/daynight_predict.py</div>
+      <h2>EXIF 파싱의 함정: SubIFD</h2>
+      <div class="grid-2">
+        <div class="narrative">
+          <p>Pillow의 기본 <code>getexif()</code>는 최상위 메타데이터(IFD0)만 반환합니다.</p>
+          <p>실제 촬영 시각(<code>DateTimeOriginal</code>)은 중첩된 구조인 <strong>Exif SubIFD</strong>에 따로 들어있어서, 이걸 놓치면 편집 프로그램의 "내보내기 시각"을 촬영 시각으로 착각하게 됩니다.</p>
+          <div class="stat-row">
+            <div class="stat"><div class="num">11:26</div><div class="cap">실제 촬영 시각</div></div>
+            <div class="stat"><div class="num" style="color:var(--danger);">19:29</div><div class="cap">Lightroom 내보내기 시각 (오판독)</div></div>
+          </div>
+        </div>
+        <div class="codeblock">
+          <span class="filename">ai/daynight_predict.py</span>
+          <pre><span class="tok-com"># DateTimeOriginal(36867)은 IFD0가 아니라</span>
+<span class="tok-com"># Exif SubIFD(태그 34665)에 있다</span>
+exif_ifd = exif_data.get_ifd(IFD.Exif)
+
+if <span class="tok-num">36867</span> in exif_ifd:
+    return (
+        exif_ifd[<span class="tok-num">36867</span>],
+        offset_original,
+        offset_time
+    )
+
+<span class="tok-com"># 최후 폴백 — Lightroom이 덮어썼을 수 있음</span>
+if <span class="tok-num">306</span> in exif_data:
+    return (
+        exif_data[<span class="tok-num">306</span>],
+        offset_original,
+        offset_time
+    )</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 15. CAMERA CLOCK -->
+  <section class="slide" id="s15">
+    <div class="slide-inner">
+      <div class="eyebrow">심화 — ai/daynight_predict.py</div>
+      <h2>카메라 시계 오류 보정 &amp; 폐기된 3중 다수결</h2>
+      <div class="grid-2">
+        <div class="narrative">
+          <p>카메라가 시간대를 모를 때 흔히 남기는 기본값(+00:00)과 실제 시간대가 같이 있으면, 그 차이만큼 자동 보정합니다.</p>
+          <p>처음엔 EXIF + CLIP + 밝기 휴리스틱 <strong>3중 다수결</strong>을 시도했다가 되돌렸습니다. 그림자 짙은 대낮 숲 사진 250장 중 <strong>47%</strong>에서 두 픽셀 기반 신호가 <strong>동시에</strong> 오판해, 다수결이 정확한 EXIF를 2:1로 뒤집었습니다.</p>
+          <p><strong>교차검증 신호는 서로 독립적이어야 의미가 있다</strong>는 걸 이때 배웠습니다.</p>
+        </div>
+        <div class="codeblock">
+          <span class="filename">ai/daynight_predict.py</span>
+          <pre><span class="tok-com"># ① 카메라 시계 오류 자동 보정</span>
+if (
+    offset_original == "+00:00"
+    and offset_time
+    and offset_time != "+00:00"
+):
+    correction = _parse_offset_hours(
+        offset_time)
+    hour = int(round(
+        hour + correction)) % <span class="tok-num">24</span>
+
+<span class="tok-com"># ② 경계(06시/18시) 근처만 CLIP 교차검증</span>
+DAYNIGHT_BOUNDARY_MARGIN = <span class="tok-num">1</span>
+
+if near_boundary:
+    cnn_label, cnn_probs = \
+        predict_daynight(image, path)
+    if (cnn_probs is not None
+        and cnn_label != label
+        and cnn_probs[cnn_label] &gt; <span class="tok-num">0.7</span>):
+        return cnn_label, cnn_probs</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 16. UX / VALIDATION -->
+  <section class="slide" id="s16">
+    <div class="slide-inner">
+      <div class="eyebrow">Product</div>
+      <h2>UI/UX &amp; 검증 방식</h2>
+      <div class="grid-2">
+        <div class="narrative">
+          <p>갤러리 필터(태그 AND/OR, 별점, 날짜)는 선택 즉시 반영됩니다.</p>
+          <p>라이트룸 스타일 별점 토글, MobileNetV2 임베딩 기반 유사 사진 검색 TOP 10을 제공합니다.</p>
+          <p style="margin-top:10px;"><strong>하지만 진짜 중요했던 건 UI가 아니라 검증 방식이었습니다.</strong></p>
+        </div>
+        <div class="card">
+          <div class="stat-row" style="margin-top:0;">
+            <div class="stat"><div class="num accent">82장</div><div class="cap">실사용 테스트 사진</div></div>
+          </div>
+          <p style="font-size:.86rem;color:var(--ink-2);margin-top:16px;">자동화된 스크립트 검증도 했지만, 대부분의 버그는 <strong style="color:var(--ink);">Flask 서버를 띄우고 실사진을 직접 업로드</strong>해보며 발견했습니다. 검증 데이터셋만으로는 못 잡는 도메인 갭 문제들이었습니다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 17. CLOSING -->
+  <section class="slide slide--closing" id="s17">
+    <div class="slide-inner">
+      <div class="eyebrow" style="justify-content:center;">Takeaways</div>
+      <h2>마무리</h2>
+      <div class="lessons">
+        <div class="lesson">
+          <div class="n">01</div>
+          <div><h3>단일 모델의 판단을 그대로 믿지 않는다</h3><p>CLIP도 뭔가는 항상 1등으로 뽑는 구조라, 로짓 절대값·gap·크기 같은 서로 다른 성질의 신호를 겹쳐서 검증했습니다.</p></div>
+        </div>
+        <div class="lesson">
+          <div class="n">02</div>
+          <div><h3>교차검증 신호는 독립적이어야 한다</h3><p>같은 종류의 신호끼리 다수결을 하면 오히려 정답을 뒤집을 수 있다는 걸 실측으로 확인했습니다.</p></div>
+        </div>
+        <div class="lesson">
+          <div class="n">03</div>
+          <div><h3>버그는 실사용에서 나온다</h3><p>오늘 보여드린 모든 방어 로직이 검증 스크립트가 아니라 실제 사진을 업로드해보며 발견한 것들입니다.</p></div>
+        </div>
+      </div>
+      <p style="margin-top:36px;color:var(--ink-2);font-size:.95rem;">감사합니다. 질문 받겠습니다.</p>
+    </div>
+  </section>
+
+  <!-- 18. Q&A -->
+  <section class="slide" id="s18">
+    <div class="slide-inner">
+      <div class="eyebrow">Appendix</div>
+      <h2>Q&amp;A 대비</h2>
+      <div class="qna-list">
+        <div class="qna-item"><div class="q">Q. 동물 판별 게이트를 왜 4개나 겹쳤나요?</div><div class="a">각 게이트가 서로 다른 실패 유형을 막습니다 — 순서대로 하나씩 추가한 이유가 "이전 방어를 통과한 새로운 오탐이 계속 나왔기 때문"입니다.</div></div>
+        <div class="qna-item"><div class="q">Q. EXIF SubIFD 문제는 정확히 뭔가요?</div><div class="a"><code>getexif()</code>는 IFD0만 반환하므로, 중첩된 Exif SubIFD를 <code>get_ifd(IFD.Exif)</code>로 따로 열어야 실제 촬영 시각을 얻을 수 있습니다.</div></div>
+        <div class="qna-item"><div class="q">Q. 3중 다수결을 왜 포기했나요?</div><div class="a">픽셀 밝기 기반 신호 두 개가 서로 독립적이지 않아, 동시에 오판하는 경우 다수결이 정답(EXIF)을 뒤집었기 때문입니다.</div></div>
+        <div class="qna-item"><div class="q">Q. 재학습 없이 정확도는 어떻게 확보하나요?</div><div class="a">실사용 사진 82장 전수 테스트로 오분류를 찾아, 프롬프트 문장이나 임계값/gap 후처리 로직으로 보완합니다.</div></div>
+        <div class="qna-item"><div class="q">Q. 배포/실서비스 확장이 가능한가요?</div><div class="a">현재는 로컬 Flask 개발 서버 기준(CPU, ~3GB 메모리). 실서비스 확장 시 모델 서빙 최적화(양자화, GPU)가 필요합니다.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 19. DEFENSE TABLE -->
+  <section class="slide" id="s19">
+    <div class="slide-inner">
+      <div class="eyebrow">Appendix</div>
+      <h2>오탐 방어 계층 요약표</h2>
+      <div class="table-wrap">
+        <table class="spec">
+          <thead><tr><th>방어 기법</th><th>위치</th><th>막는 문제</th></tr></thead>
+          <tbody>
+            <tr><td>상대 비교(동물 vs 비동물)</td><td class="mono">animal_predict.py</td><td>명백히 동물이 아닌데 1등으로 뽑히는 경우</td></tr>
+            <tr><td>절대 로짓 임계값(23.0)</td><td class="mono">animal_predict.py</td><td>상대 비교에서도 약한 신호가 부풀려지는 경우</td></tr>
+            <tr><td>종 간 로짓 gap(2.5)</td><td class="mono">animal_predict.py</td><td>여러 종에 고만고만하게 걸치는 오탐</td></tr>
+            <tr><td>크기 게이트(1%, mediapipe)</td><td class="mono">animal_predict.py</td><td>화면 구석의 곁다리 동물</td></tr>
+            <tr><td>CLIP 크롭 2차 검증</td><td class="mono">face_detect.py</td><td>원형·대칭 물체를 얼굴로 오탐</td></tr>
+            <tr><td>카메라 시계 오류 보정</td><td class="mono">daynight_predict.py</td><td>시간대 미설정 카메라의 EXIF 오기록</td></tr>
+            <tr><td>경계 근처 교차검증</td><td class="mono">daynight_predict.py</td><td>EXIF 자체가 틀린 극소수 케이스</td></tr>
+            <tr><td>저확신 스킵(0.6)</td><td class="mono">genre / indoor</td><td>애매한 사진을 억지로 하나로 우기는 것</td></tr>
+            <tr><td>프롬프트 거부권</td><td class="mono">genre_predict.py</td><td>보강 프롬프트의 부작용(반복 인쇄물 오탐)</td></tr>
+            <tr><td>촬영자 위치 명시 프롬프트</td><td class="mono">indoor_predict.py</td><td>"보이는 디테일"과 "카메라 위치" 혼동</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(function(){
+  const deck = document.getElementById('deck');
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total = slides.length;
+  const fill = document.getElementById('progressFill');
+  const counter = document.getElementById('counter');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  let current = 0;
+
+  function pad(n){ return String(n).padStart(2,'0'); }
+
+  function updateChrome(idx){
+    current = idx;
+    fill.style.width = (((idx+1)/total)*100) + '%';
+    counter.textContent = pad(idx+1) + ' / ' + pad(total);
+  }
+
+  function goTo(idx){
+    idx = Math.max(0, Math.min(total-1, idx));
+    slides[idx].scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+  }
+
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting && e.intersectionRatio > 0.55){
+        const idx = slides.indexOf(e.target);
+        if(idx !== -1) updateChrome(idx);
+      }
+    });
+  }, { root: deck, threshold: [0.55] });
+
+  slides.forEach(s=>io.observe(s));
+
+  prevBtn.addEventListener('click', ()=> goTo(current-1));
+  nextBtn.addEventListener('click', ()=> goTo(current+1));
+
+  window.addEventListener('keydown', (e)=>{
+    if(['ArrowDown','ArrowRight','PageDown',' '].includes(e.key)){ e.preventDefault(); goTo(current+1); }
+    else if(['ArrowUp','ArrowLeft','PageUp'].includes(e.key)){ e.preventDefault(); goTo(current-1); }
+    else if(e.key === 'Home'){ e.preventDefault(); goTo(0); }
+    else if(e.key === 'End'){ e.preventDefault(); goTo(total-1); }
+  });
+
+  updateChrome(0);
+})();
+</script>
