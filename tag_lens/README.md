@@ -1,159 +1,423 @@
 # TAG_LENS
 
-AI 기반 사진 장르 분석 및 태그 기반 스마트 갤러리 웹 서비스.
+AI 기반 스마트 갤러리. 사진을 업로드하면 자동으로 장르, 동물, 주야간, 실내/실외 등을 분석하고 태그를 붙여줍니다.
 
 ## 주요 기능
 
-> **2026-07-09부터 장르/주야간/실내외/동물 분류가 전부 자체 학습 CNN → CLIP 제로샷으로 교체됨.**
-> 이유와 실측 수치는 [DEVLOG.md](DEVLOG.md) 참고, 마이그레이션 배경은 아래 [모델](#모델) 섹션 참고.
+- 🏷️ **자동 태그 생성** — CLIP 제로샷 AI로 사진 자동 분류
+  - 장르 (자연/도시/음식/사물/인물)
+  - 주야간 (EXIF 촬영시각 우선, 카메라 시계 오류 자동 보정)
+  - 실내/실외 (도시/인물 장르)
+  - 동물 (강아지/고양이/말/동물)
+  - 특징 (밝기, 색온도, 채도, 흑백)
 
-- 사진 업로드 (다중 업로드 지원)
-- 하이브리드 장르 분류
-  1. mediapipe 얼굴 검출 — 얼굴이 감지되면 곧바로 `인물`
-  2. 얼굴이 없으면 CLIP 제로샷 5-class (`자연 / 도시 / 음식 / 사물 / 인물`, 확신도(60%) 미만이면 `기타`)
-  3. 동물 태그가 붙었는데 얼굴이 감지 안 됐다면, CNN 5-class 중 뭘 골랐든 `기타`로 보정 (`resolve_genre_with_animal` — 동물 클로즈업을 장르가 사람/음식 등으로 잘못 보는 문제 대응)
-- 주간/야간 판별 (EXIF 촬영시각 우선, 없으면 CLIP 제로샷으로 폴백 — 흑백 사진은 판별 제외). EXIF의 `OffsetTimeOriginal`이 시간대 미설정 기본값(`+00:00`)인데 `OffsetTime`은 실제 시간대를 가리키면 카메라 시계 오류로 보고 보정
-- 실내/실외 CLIP 제로샷 이진 분류 (도시/인물 장르에만 적용, `#실내`만 태그, 확신도(60%) 낮으면 태그 없음. 자연은 2026-07-09부터 제외 — 실내 오탐이 훨씬 흔해서 신뢰도가 낮았음)
-- OpenCV 특징 분석 (밝기 / 색감 / 채도 / 흑백 여부)
-- 동물 세부 태그 (`#강아지`/`#고양이`/`#말`/`#동물`) — CLIP 제로샷으로 판별. 종(species) 프롬프트 1등-2등 점수차가 좁으면(동물이 없는데 색감/구도가 막연히 "동물틱"해서 걸리는 경우) 태그 안 붙임. mediapipe Object Detector(EfficientDet-Lite0)로 실제 바운딩박스 크기까지 확인해서, 화면 대비 너무 작은(주제가 아닌 곁다리) 동물도 태그 안 붙임
-- 자동 다중 태그 생성 (`#장르`, `#야간`/`#야경`, `#흑백`, `#따뜻한`/`#차가운`, `#실내`, 동물 태그, 확신도 낮으면 `#기타` 등)
-- 태그 AND 필터 + 별점 필터 + 날짜 필터
-- CNN 임베딩 기반 유사 사진 검색 (임베딩 없으면 Average Hash로 폴백)
-- Average Hash 기반 업로드 중복 감지
-- 사진 별점(0~5) 및 삭제
-- 사진 상세보기에서 태그 수동 추가
+- 📊 **필터링 & 검색**
+  - 태그 필터 (AND 모드: 모든 태그 포함 / OR 모드: 하나 이상)
+  - 평점 필터 (별⭐ UI, 토글 방식)
+  - 날짜 범위 필터
+  - **모든 필터 즉시 적용** (새로고침 없음)
 
-## 프로젝트 구조
+- ⭐ **별점 관리**
+  - 토글 방식 (라이트룸 스타일)
+  - 상세 페이지에서 별 클릭해서 평가
+  - 같은 별 다시 클릭하면 초기화
 
-```text
-tag_lens/
-├── app.py                      Flask 앱 — 라우팅 + 업로드 파이프라인
-├── requirements.txt
-├── tag_lens.db                  SQLite DB (photo / tag / photo_tag)
-│
-├── ai/                          판단/추론 로직 (CLIP 제로샷 위주 + 일부 레거시 CNN/사전학습 모델)
-│   ├── genre_predict.py         5-class 장르 분류 — CLIP 제로샷(2026-07-09, 이전엔 직접 학습 CNN). resolve_genre_with_animal()도 여기 위치
-│   ├── daynight_predict.py      주간/야간 판별 — EXIF 촬영시각 우선(카메라 시계 오류 보정 포함) + CLIP 제로샷 폴백(2026-07-09, 이전엔 직접 학습 CNN)
-│   ├── indoor_predict.py        실내/실외 이진 분류 — CLIP 제로샷(2026-07-09, 이전엔 직접 학습 CNN). clip_utils.py를 안 쓰고 자체 CLIP 로더를 따로 둠(의도적)
-│   ├── animal_predict.py        동물 세부 태그(강아지/고양이/말/동물) — CLIP 제로샷(2026-07-09, 이전엔 ImageNet MobileNetV2). 종 프롬프트 1등-2등 gap 임계값 + mediapipe Object Detector 크기 게이트로 오탐/곁다리 동물 방어
-│   ├── clip_utils.py            CLIP 모델(openai/clip-vit-base-patch32) 공유 로더 — genre/daynight/animal predict가 사용 (indoor는 제외, 위 참고)
-│   ├── face_detect.py           얼굴 검출 — mediapipe(Google) 사전학습 BlazeFace + CLIP 크롭 2차 검증(원형 물체 오탐 방어, 2026-07-09)
-│   ├── embedding.py             유사 사진 검색용 특징 추출 — MobileNetV2/ImageNet, 순수 사전학습(직접 학습 안 함)
-│   └── tagging.py               generate_tags() — app.py와 scripts/가 공유하는 태그 생성 로직
-│
-├── opencv/                      순수 이미지 처리 (OpenCV만 사용, 판단 로직 없음)
-│   ├── preprocess.py            이미지 로드 / CNN 입력 전처리
-│   └── feature_analyzer.py      밝기/색감/채도/흑백 분석
-│
-├── hash/
-│   └── average_hash.py          Average Hash — 중복 감지 + 임베딩 없을 때 유사도 폴백
-│
-├── database/
-│   └── database.py              스키마 생성 + CRUD / 필터 / 유사도 쿼리
-│
-├── templates/, static/          Flask 뷰 템플릿 + CSS
-│
-├── models/
-│   ├── genre_model.h5                  장르 5-class CNN (레거시, 2026-07-09부터 추론에서 미사용 — CLIP으로 대체됨)
-│   ├── daynight_model.h5               주야간 이진 CNN (레거시, 위와 동일)
-│   ├── indoor_model.h5                 실내/실외 이진 CNN (레거시, 위와 동일)
-│   ├── blaze_face_full_range.tflite    mediapipe 얼굴 검출 사전학습 모델 (현재 사용)
-│   └── efficientdet_lite0.tflite       mediapipe 객체 검출 사전학습 모델, COCO 90-class — 동물 태그 크기 게이트용(현재 사용, 2026-07-09 추가)
-│
-├── uploads/                                        업로드된 사진 (gitignore)
-├── dataset/, dataset_daynight/, dataset_indoor/     학습용 데이터셋 (gitignore, scripts/prepare/로 생성)
-│
-└── scripts/                     일회성 학습·유지보수 스크립트 (앱 런타임과 무관, 수동 실행) — 역할별 하위 폴더
-    ├── prepare/                     데이터셋을 처음부터 구성 (원본 다운로드 → train/val 폴더)
-    │   ├── prepare_genre_dataset.py     장르 5-class 데이터셋 구성 (Kaggle 다운로드)
-    │   ├── prepare_daynight_dataset.py  주야간 데이터셋 구성 (Kaggle 다운로드)
-    │   └── prepare_indoor_dataset.py    실내/실외 데이터셋 구성 (HuggingFace 다운로드)
-    │
-    ├── expand/                      이미 있는 데이터셋에 데이터를 추가로 보강
-    │   ├── expand_object_dataset.py         사물 데이터셋에 Caltech-101 카테고리 추가
-    │   ├── expand_daynight_with_dnim.py     주야간 데이터셋에 DNIM(다지점 웹캠, 실제 촬영시각 라벨) 다양성 추가
-    │   ├── expand_indoor_with_places365.py  실내/실외 데이터셋에 Places365 다양성 추가
-    │   └── IO_places365.txt                 Places365 indoor/outdoor 공식 매핑 (위 스크립트가 참조)
-    │
-    ├── train/                       준비된 데이터셋으로 CNN 학습 → models/*.h5
-    │   ├── train_genre_model.py         장르 CNN 학습 1단계(base 동결) + 2단계(fine-tuning) 통합
-    │   ├── train_genre_model_phase2.py  2단계(fine-tuning)만 독립 재실행 — 세션을 나눠 이어갈 때 사용
-    │   ├── train_daynight_model.py      주야간 CNN 학습
-    │   ├── train_indoor_model.py        실내/실외 CNN 학습
-    │   └── colab_train.ipynb            장르+주야간 CNN을 Colab GPU에서 학습(로컬 CPU가 느릴 때)
-    │
-    └── maintenance/                 이미 DB에 있는 사진들에 결과 반영
-        ├── reclassify_photos.py         기존 DB 사진 재분류(장르/태그 갱신, 모델 갱신 후 실행)
-        ├── migrate_embeddings.py        기존 사진에 CNN 임베딩 백필
-        └── _test_kaggle.py              kagglehub 연결 테스트
+- 🔍 **유사 사진 검색** — CNN 특징 벡터 기반 코사인 유사도
+
+- 📝 **수동 편집** — 태그 추가/삭제, 사진 삭제
+
+---
+
+## 설치 & 실행
+
+### 1. 환경 설정
+```bash
+# conda 환경 활성화 (Python 3.12)
+conda activate firstvenv
+
+# tag_lens 디렉토리로 이동
+cd tag_lens
 ```
 
-## 이미지 분석 파이프라인 (`app.py` 업로드 처리 순서)
-
-1. mediapipe 얼굴 검출 → 얼굴 있으면 `인물`로 확정
-2. 얼굴이 없으면 CLIP 제로샷 5-class 장르 분류 (`자연/도시/음식/사물/인물`, 확신도(60%) 낮으면 `기타`)
-3. CLIP 제로샷으로 동물 세부 판별 (`강아지`/`고양이`/`말`/`동물`, 종 프롬프트 1등-2등 점수차가 좁거나 확신도 낮으면 태그 없음)
-4. 동물 태그가 붙었는데 얼굴 미감지 상태면, 장르를 `기타`로 보정 (`resolve_genre_with_animal`)
-5. 주간/야간 판별 — EXIF 촬영시각이 있으면 확정 판정(카메라 시계 오류 보정 포함), 없으면 CLIP 제로샷으로 폴백 (흑백 사진은 판별 제외)
-6. 장르가 `도시`/`인물`이면 실내/실외 CLIP 제로샷 이진 분류 (`사물`/`음식`은 배경 맥락이 없어 제외, `자연`은 실내 오탐이 흔해 2026-07-09부터 제외)
-7. OpenCV 특징 분석 (밝기/색감/채도/흑백)
-8. Average Hash로 업로드 중복 검사
-9. CNN 임베딩 추출 → 유사 사진 검색에 사용
-10. 태그 생성 (`#장르`, `#주간`/`#야간`, 조건부 `#야경`, `#흑백`, 흑백이 아니면 `#따뜻한`/`#차가운`, 실내면 `#실내`, 동물이면 `#강아지`/`#고양이`/`#말`/`#동물`)
-
-## 실행 방법
-
+### 2. Flask 서버 시작
 ```bash
-cd tag_lens
-pip install -r requirements.txt   # 또는 conda 환경 firstvenv 활성화
 python app.py
 ```
 
-- http://127.0.0.1:5000 접속
-- 실행 시 `uploads/` 폴더와 SQLite 테이블(`photo`/`tag`/`photo_tag`)이 자동 생성됨
+### 3. 브라우저 접속
+```
+http://localhost:5000
+```
 
-## 모델
+---
 
-### 현재 (CLIP 제로샷, 2026-07-09~)
+## 파이프라인 (Processing Pipeline)
 
-- 장르/주야간(폴백)/실내외/동물 분류 전부 `openai/clip-vit-base-patch32`(HuggingFace `transformers`) 제로샷으로 판별 — 별도 학습 없이 텍스트 프롬프트와 이미지의 유사도만 비교
-- 계기: 자체 학습 CNN들이 "맥락 정보 부족한 클로즈업/질감" 사진(간판, 아스팔트, 하늘 안 보이는 실외 등)에서 확신도 높게 틀리는 패턴이 반복 확인됨. 실내/실외는 데이터 보강 재학습까지 시도했으나 검증셋 97.49%에도 실사진 정확도가 13.3%로 급락하는 과적합이 발생해 롤백하고 CLIP으로 전환
-- 각 도메인마다 확신도 임계값(genre/indoor 60%, animal은 절대 로짓 23.0 + 종 프롬프트 1등-2등 gap 2.5) 을 별도로 튜닝해 "애매하면 태그 안 붙임/기타 처리"하는 안전장치를 둠 — CLIP도 프롬프트 중 반드시 하나를 고르는 구조라 확신도 자체 필터링이 필수
-- 자세한 실측 수치, 실패 사례, 임계값 산출 근거는 [DEVLOG.md](DEVLOG.md) 참고
+사진을 업로드하면 다음 순서로 처리됩니다:
 
-### 레거시 (자체 학습 CNN, `models/*.h5`)
+```
+사진 업로드 (app.py → upload())
+    ↓
+[1] 이미지 로드 & 전처리
+    └─ opencv/preprocess.py → load_image() (OpenCV)
+    ↓
+[2] 얼굴 감지
+    └─ ai/face_detect.py → count_faces()
+       ├─ mediapipe BlazeFace (사전학습 CNN, 검출)
+       └─ CLIP 크롭 검증 (사전학습 비전-랭귀지 모델, 오탐 방지)
+    ↓
+[3] 장르 분류
+    ├─ 얼굴 감지됨 → "인물"
+    └─ 얼굴 없음 → ai/genre_predict.py (CLIP 제로샷)
+       ├─ 5-class: 자연/도시/음식/사물/인물
+       └─ 확신도 60% 미만 → "기타"
+    ↓
+[4] 동물 판별
+    └─ ai/animal_predict.py (CLIP 제로샷)
+       ├─ 강아지/고양이/말/동물/없음
+       ├─ 종(species) gap 체크 (로짓값 기반, 오탐 방지)
+       └─ mediapipe Object Detector (사전학습 CNN, 크기 체크)
+    ↓
+[5] 장르 보정
+    └─ ai/genre_predict.py → resolve_genre_with_animal() (로직 기반)
+       └─ 동물 감지되었는데 얼굴 없음 → 장르를 "기타"로 보정
+    ↓
+[6] 주야간 판별
+    └─ ai/daynight_predict.py
+       ├─ [우선순위 1] EXIF 촬영시각 분석 (카메라 시계 오류 자동 보정)
+       ├─ [우선순위 2] CLIP 제로샷 폴백 (EXIF 없을 때)
+       └─ 흑백 사진 → 판별 안 함
+    ↓
+[7] 실내/실외 판별
+    └─ ai/indoor_predict.py (CLIP 제로샷, 도시/인물 장르만)
+    ↓
+[8] 특징 분석
+    └─ opencv/feature_analyzer.py (OpenCV 기반)
+       ├─ Brightness (그레이스케일 중앙값)
+       ├─ Color Tone (BGR 히스토그램 가중평균)
+       ├─ Saturation (HSV 채도 75 백분위수)
+       └─ is_bw (픽셀별 표준편차 분석)
+    ↓
+[9] 이미지 해싱
+    └─ hash/average_hash.py (Average Hash)
+       └─ 중복 사진 감지
+    ↓
+[10] 특징 벡터 추출
+    └─ ai/embedding.py → extract_features() (MobileNetV2 사전학습 CNN)
+       └─ 1280차원 벡터 (유사도 검색용)
+    ↓
+[11] 태그 생성
+    └─ ai/tagging.py → generate_tags() (로직 기반)
+       └─ 위 모든 결과 조합해서 태그 목록 생성:
+          #자연/#도시/#음식/#사물/#인물
+          #주간/#야간/#야경
+          #흑백
+          #따뜻한/#차가운
+          #실내
+          #강아지/#고양이/#말/#동물
+          #기타
+    ↓
+[12] DB 저장
+    └─ database/database.py → insert_photo() (SQLite)
+       └─ photo 테이블에 모든 정보 저장
+    ↓
+[13] 결과 표시
+    └─ templates/result.html (HTML/CSS/JavaScript)
+```
 
-- `models/genre_model.h5`, `models/daynight_model.h5`, `models/indoor_model.h5` — 더 이상 추론에서 로드되지 않음(2026-07-09부로 CLIP 전면 교체). `predict_*` 함수들이 `model_path` 인자를 여전히 받지만 호출부 호환용으로만 남겨뒀을 뿐 내부에서 쓰지 않음
-- 모두 MobileNetV2 전이학습 기반, 2단계 학습(1단계 base 동결 → 2단계 상위 30레이어 fine-tuning)으로 만들어졌던 것들 — `scripts/train/`, `scripts/prepare/`, `scripts/expand/`와 아래 데이터셋 출처 표는 이 CNN들을 학습시킬 때 썼던 기록으로 남겨둠
-- CNN을 다시 쓰게 될 경우를 대비해 코드/스크립트는 삭제하지 않음. 모델 파일이 없거나 로드 실패 시 각 `predict_*`는 밝기 기반 휴리스틱으로 폴백하는 구조도 유지됨
+---
 
-### 공통
+## 주요 파일 설명
 
-- 학습/추론에 쓰는 실제 패키지(tensorflow/opencv/kagglehub/mediapipe/torch/transformers)는 conda 환경 **`firstvenv`**(Python 3.12)에 설치돼 있음. 프로젝트 루트의 `.venv`는 비어있는 미사용 환경이므로 혼동 주의
-- 로컬에 GPU가 없어 CNN 학습은 CPU로 진행되며, MobileNetV2 전이학습도 데이터 규모에 따라 에폭당 100~250초 소요. 데이터셋이 크면 `scripts/train/colab_train.ipynb`로 Google Colab(GPU T4)에서 학습 가능 — `dataset/`, `dataset_daynight/`를 zip으로 압축해 Drive에 올린 뒤 노트북 안내대로 진행
+### 🎯 AI 모델들 (`ai/` 디렉토리)
 
-## 데이터셋 출처
+| 파일 | 역할 | 모델 | 입력 | 출력 |
+|------|------|------|------|------|
+| `genre_predict.py` | 장르 분류 + 동물 기반 보정 | CLIP | 이미지 + 동물 판별 결과 | 장르 + 확률 |
+| `animal_predict.py` | 동물 판별 | CLIP | 이미지 | 동물 종류 + 로짓값 |
+| `daynight_predict.py` | 주야간 판별 | CLIP + EXIF | 이미지 + 시간 정보 | 주간/야간 |
+| `indoor_predict.py` | 실내/실외 판별 | CLIP | 이미지 | 실내/실외 |
+| `face_detect.py` | 얼굴 감지 + 검증 | mediapipe + CLIP | 이미지 | 얼굴 개수 |
+| `clip_utils.py` | CLIP 통합 관리 | CLIP | — | 모델 인스턴스 (공유) |
+| `embedding.py` | 유사도 검색 | MobileNetV2 | 이미지 | 1280차원 벡터 |
+| `tagging.py` | 최종 태그 생성 | — | 위 모든 결과 | 태그 목록 |
 
-> 아래는 레거시 CNN(`models/*.h5`, 현재 미사용) 학습에 썼던 출처 기록. 현재 쓰이는 CLIP/mediapipe/ImageNet 항목은 학습이 아니라 사전학습 가중치를 그대로 쓰는 것이라 "데이터셋"이 따로 없음.
+### 📷 이미지 처리 (`opencv/` 디렉토리)
 
-| 용도 | 출처 |
-|---|---|
-| 장르 — 자연/도시 | Kaggle [`puneet6060/intel-image-classification`](https://www.kaggle.com/datasets/puneet6060/intel-image-classification) (sea/glacier/mountain/forest → 자연, buildings/street → 도시) |
-| 장르 — 음식 | Kaggle [`kmader/food41`](https://www.kaggle.com/datasets/kmader/food41) (Food-101, 12개 카테고리 선택) |
-| 장르 — 사물 | Kaggle [`imbikramsaha/caltech-101`](https://www.kaggle.com/datasets/imbikramsaha/caltech-101) (Caltech-101, 34개 카테고리 선택) |
-| 장르 — 인물 | Kaggle `imbikramsaha/caltech-101`(Faces/Faces_easy) + Kaggle [`ashwingupta3012/human-faces`](https://www.kaggle.com/datasets/ashwingupta3012/human-faces) |
-| 주간/야간 (기본) | Kaggle [`ibrahimalobaid/day-and-night-image`](https://www.kaggle.com/datasets/ibrahimalobaid/day-and-night-image) (400장, 도로 CCTV 1곳) |
-| 주간/야간 (다양성 확장) | Kaggle [`stevemark/daynight-dataset`](https://www.kaggle.com/datasets/stevemark/daynight-dataset) (DNIM, Archive of Many Outdoor Scenes 기반 — 17개의 서로 다른 웹캠 위치, 파일명의 실제 촬영 시각으로 라벨링) |
-| 실내/실외 (기본) | HuggingFace [`prithivMLmods/IndoorOutdoorNet-20K`](https://huggingface.co/datasets/prithivMLmods/IndoorOutdoorNet-20K) (Apache-2.0) |
-| 실내/실외 (다양성 확장) | Kaggle `puneet6060/intel-image-classification`(도시 재활용, 전부 실외) + HuggingFace [`ljnlonoljpiljm/places365-256px`](https://huggingface.co/datasets/ljnlonoljpiljm/places365-256px) (Places365, MIT — 365개 장면 카테고리를 [공식 indoor/outdoor 매핑](https://github.com/CSAILVision/places365)으로 라벨링) |
-| 얼굴 검출 모델 (현재 사용) | mediapipe BlazeFace full-range 사전학습 모델(Google MediaPipe Model Zoo) — `models/blaze_face_full_range.tflite` |
-| 동물 태그 크기 게이트 (현재 사용) | mediapipe Object Detector, EfficientDet-Lite0 사전학습 모델(COCO 90-class, Google MediaPipe Model Zoo) — `models/efficientdet_lite0.tflite`. 종 분류는 CLIP이 이미 하므로 여기선 바운딩박스 크기만 참고 |
-| 유사도 검색 임베딩 (현재 사용) | MobileNetV2 ImageNet 사전학습 가중치(Keras Applications, 장르로 fine-tuning 안 된 원본) |
-| 장르/주야간(폴백)/실내외/동물 (현재 사용) | `openai/clip-vit-base-patch32` 사전학습 가중치(HuggingFace `transformers`), 제로샷 그대로 사용 — 자세한 프롬프트/임계값은 `ai/genre_predict.py`, `ai/daynight_predict.py`, `ai/indoor_predict.py`, `ai/animal_predict.py` 참고 |
-| 동물 세부 태그 (레거시) | MobileNetV2 ImageNet 1000-class 사전학습 가중치(Keras Applications, include_top=True 그대로 사용, 학습 안 함) — CLIP으로 교체되기 전에 쓰던 방식, 견종 위주 편향 문제로 폐기 |
+| 파일 | 역할 |
+|------|------|
+| `preprocess.py` | 이미지 로드, 회전 보정, 크기 조정 |
+| `feature_analyzer.py` | 밝기, 색온도, 채도, 흑백 분석 |
 
-> **참고**: 주간/야간을 늘리려고 5-class 이미지에 밝기 기반 자동 라벨(pseudo-label)을 붙이는 방식을 한 번 시도했으나, 그림자 짙은 대낮 사진을 야간으로 잘못 라벨링하는 문제가 발견돼 폐기했다(해당 스크립트는 삭제됨). 대신 위 표의 DNIM처럼 **신뢰할 수 있는 실제 라벨(촬영 시각 등)이 있는 데이터**로만 확장하는 방향으로 정리했다. 자세한 경위는 [DEVLOG.md](DEVLOG.md) 참고.
+### 🔐 기타
 
-## 개발 현황
+| 파일 | 역할 |
+|------|------|
+| `hash/average_hash.py` | 중복 사진 감지 (Average Hash) |
+| `database/database.py` | SQLite 쿼리 (photo/tag/photo_tag 테이블) |
+| `app.py` | Flask 서버 + 모든 라우트 + 업로드 파이프라인 |
+| `templates/` | 웹 UI (HTML) |
+| `static/css/` | 스타일 (CSS) |
 
-작업 로그·알려진 이슈·다음 할 일은 [DEVLOG.md](DEVLOG.md) 참고.
+---
+
+## 데이터베이스 구조
+
+```sql
+photo 테이블:
+├─ id (PK)
+├─ filename (파일명)
+├─ upload_date (촬영 날짜, EXIF 기반)
+├─ genre (자연/도시/음식/사물/인물/기타)
+├─ brightness (밝기, 0~255)
+├─ color_tone (색온도: 따뜻한/차가운)
+├─ saturation (채도, 0~255, 75 백분위수)
+├─ is_bw (흑백 여부, 0/1)
+├─ rating (별점, 0~5)
+├─ hash (중복 감지용)
+├─ face_count (감지된 얼굴 개수)
+├─ embedding (유사도 검색용 1280차원 벡터, JSON)
+├─ genre_probs (CLIP 확률, JSON)
+└─ daynight_probs (CLIP 확률, JSON)
+
+tag 테이블:
+├─ id (PK)
+└─ name (#야경, #인물, #흑백 등)
+
+photo_tag 테이블 (Many-to-Many):
+├─ photo_id (FK)
+└─ tag_id (FK)
+```
+
+---
+
+## CLIP 제로샷 분류 원리
+
+모든 분류는 **OpenAI CLIP** 기반입니다. CLIP은 텍스트와 이미지를 같은 임베딩 공간에 매핑합니다.
+
+**예시: 장르 분류**
+```python
+# 프롬프트 (ai/genre_predict.py)
+prompts = [
+    "a photo of nature landscape",
+    "a photo of urban city",
+    "a photo of food",
+    "a photo of object product",
+    "a photo of person people"
+]
+
+# 동작
+# 1. 이미지를 CLIP 인코더에 통과
+# 2. 각 프롬프트를 CLIP 텍스트 인코더에 통과
+# 3. 이미지 벡터와 각 프롬프트 벡터의 유사도 계산
+# 4. 가장 높은 프롬프트 = 장르
+```
+
+**장점**: 재학습 없이 즉시 새로운 클래스 추가 가능  
+**단점**: 프롬프트 엔지니어링 필요, 특정 사진에서는 CNN보다 약할 수 있음
+
+---
+
+## 웹 인터페이스
+
+### 갤러리 페이지 (`/gallery`)
+```
+┌─ 왼쪽 ─────────────────┬─ 오른쪽 ──────────┐
+│ Tags                   │ 평점 이상 (★★★★★) │
+│ ○ 모두 포함 (AND)      │ 시작일 [____]     │
+│ ○ 하나 이상 (OR)       │ 종료일 [____]     │
+│                        │                  │
+│ □ #야경 (5)           │ [초기화]          │
+│ □ #인물 (12)          │                  │
+│ □ #흑백 (3)           │                  │
+│                        │                  │
+│ [태그 선택 해제]       │                  │
+└────────────────────────┴──────────────────┘
+
+사진 그리드 (갤러리)
+```
+
+### 상세 페이지 (`/photo/<id>`)
+- 사진 정보
+  - Genre, Date, Brightness, Color Tone, Saturation
+  - Rating (★ 토글식, 같은 별 재클릭 = 초기화)
+  - Tags (수동 추가/삭제 가능)
+  
+- CLIP 라이트박스
+  - 사진 클릭 시 확대
+  - 배경 95% 어둡게 (집중도 향상)
+
+- 유사 사진 검색
+  - 코사인 유사도 TOP 10
+
+---
+
+## 개발 환경
+
+- **Python**: 3.12
+- **Framework**: Flask 2.x
+- **AI 모델**: 
+  - **CLIP** (openai/clip-vit-base-patch32) — 분류 (장르/동물/주야간/실내외)
+  - **사전학습 CNN/신경망**:
+    - BlazeFace (Google mediapipe) — 얼굴 감지
+    - EfficientDet-Lite0 (mediapipe Object Detector) — 동물 크기 측정
+    - MobileNetV2 (ImageNet) — 유사도 검색 임베딩
+  - ~~직접 학습 CNN~~ (2026-07-09 이후 폐기)
+- **이미지 처리**: OpenCV, PIL/Pillow
+- **DB**: SQLite3
+- **임베딩**: 1280차원
+
+---
+
+## 주의사항
+
+⚠️ **Runtime 환경**
+- 실제 런타임: conda 환경 `firstvenv` (Python 3.12)
+- 절대 시스템 기본 `python` 사용 금지
+- 항상 `conda activate firstvenv` 후 실행
+
+⚠️ **CLIP 모델**
+- 첫 실행 시 ~350MB 자동 다운로드 (인터넷 필요)
+- `~/.cache/huggingface/` 에 저장됨
+
+⚠️ **메모리 요구사항**
+- CLIP + mediapipe + 각 모델 로드로 ~3GB 메모리 필요
+- GPU 가속 미지원 (CPU 기반)
+
+---
+
+## 알려진 한계
+
+1. **daynight의 특정 사진** — CLIP이 `04541da4`(밤바다)에서 CNN보다 약함
+2. **장르의 추상 사진** — 장노출/흔들림 사진은 CLIP도 판정 어려움
+3. **실내/실외의 잔여 케이스** — HAKATA 간판 같은 특수한 클로즈업은 오탐
+4. **얼굴 감지의 작은 얼굴** — 배경 속 행인 얼굴은 감지되지만 필터링됨
+
+---
+
+## 모델 진화 과정
+
+### Phase 1: CNN 기반 (초기)
+
+**접근법**: 각 작업별로 직접 학습 CNN 모델 구축
+- **장르**: ResNet50 Fine-tuning (5-class)
+- **주야간**: 간단한 CNN (2-class)
+- **실내/실외**: CNN (2-class)
+- **동물**: ImageNet MobileNetV2 (상위 1 로짓값만 사용)
+
+**한계**:
+- 장르 CNN: 클로즈업/텍스처 이미지에서 도메인 외 실패 (예: 아스팔트 타이어자국을 자연으로 분류)
+- 주야간 CNN: 자연광 도메인 학습 데이터 부족 (숲 캐노피, 특이 색보정)
+- 실내/실외 CNN: "하늘 안 보이는 실외"를 실내로 오탐 (웹캠/건물 파사드)
+- 동물: ImageNet 편향 (개 118개 품종 vs 고양이 5개 품종)
+
+### Phase 2: CLIP 제로샷 전환 (2026-07-09)
+
+**이유**: 재학습 없이 즉시 개선 가능 + 도메인 일반화 우수
+
+**전환 과정**:
+1. **장르** → CLIP 5-class 프롬프트
+   - 결과: 클로즈업 도메인 개선 (아스팔트 타이어자국 정확화)
+   
+2. **주야간** → CLIP 제로샷 + EXIF 카메라 시계 오류 보정
+   - 결과: 자연광 도메인 오류 대폭 감소
+   
+3. **실내/실외** → CLIP 제로샷 + 프롬프트 개정 (카메라 위치 명시)
+   - 결과: 야간 매장 전면 오탐 해결
+   
+4. **동물** → CLIP 제로샷 + 종(species) gap 체크 + 크기 게이트
+   - 결과: ImageNet 편향 제거, 오탐 방어층 강화
+
+**임베딩은 사전학습 CNN 유지**: 
+- MobileNetV2 (ImageNet 사전학습, 재학습 X)
+- 용도: 유사 사진 검색 (1280차원 특징 벡터)
+- 분류 작업은 전부 CLIP으로 전환
+
+**실측 결과** (82장 사용자 실사진 테스트):
+- 오탐 감소: 14/25 (56%) → 1/25 (4%)
+- 성능 향상: 거의 모든 약점 해결 (몇 가지 CLIP 자체 오답 제외)
+
+---
+
+## 다음 개선 방향
+
+- [ ] CNN+CLIP 앙상블 (특정 약점 보완, 예: daynight `04541da4`)
+- [ ] 사용자 피드백 기반 부분 재학습
+- [ ] 다중 언어 CLIP 프롬프트
+- [ ] GPU 가속 (CUDA/ROCm)
+- [ ] 배치 재분류 최적화
+
+---
+
+---
+
+## CNN 파이프라인 (레거시, 현재 미사용)
+
+> 2026-07-09 이전에 사용했던 CNN 기반 접근법. 현재는 CLIP으로 전환되었으나, 코드와 스크립트는 참고용으로 남겨둠.
+
+### [1단계] 데이터셋 준비 (`scripts/prepare/`)
+
+**목표**: Kaggle/HuggingFace에서 원본 다운로드 → train/val 폴더로 구성
+
+| 작업 | 스크립트 | 데이터 규모 |
+|------|---------|-----------|
+| 장르 분류 데이터 | `prepare_genre_dataset.py` | train 8,000장 / val 2,000장 |
+| 주야간 분류 데이터 | `prepare_daynight_dataset.py` | train 320장 / val 80장 (도로 CCTV) |
+| 실내/실외 분류 데이터 | `prepare_indoor_dataset.py` | train 16,000장 / val 4,000장 |
+
+**왜 이렇게?** Kaggle/HuggingFace에서 다운로드한 원본은 이미지만 있고, train/val 폴더 구조가 없거나 클래스별 폴더가 없어서 직접 정리 필요.
+
+### [2단계] 데이터 보강 (`scripts/expand/`)
+
+**목표**: 학습 데이터의 다양성을 높임 (도메인 편향 줄이기)
+
+| 작업 | 추가 데이터 | 이유 |
+|------|-----------|------|
+| 사물 데이터 확대 | Caltech-101 (18개 카테고리) | 원본 음식/사물이 1000장뿐이라 부족 |
+| 주야간 다양성 | DNIM (17개 웹캠, 실제 시각 라벨) | 도로 CCTV 400장만으로는 다양한 실외 환경 부족 |
+| 실내/실외 다양성 | Places365 (365개 장면) | "하늘 안 보이는 실외"와 "배경 없는 실내" 패턴 학습 필요 |
+
+**결과**: train 규모 3배 확대 (dataset_indoor의 경우 train 5000 → 19,996장)
+
+**주의**: 초기에 5-class 이미지에 밝기 기반 pseudo-label을 붙여 주야간 데이터를 늘리려 했으나, 그림자 짙은 대낮 사진을 야간으로 잘못 라벨링하는 문제로 폐기 → **신뢰할 수 있는 실제 라벨(촬영 시각)이 있는 데이터만 사용**하는 원칙 수립.
+
+### [3단계] 모델 학습 (`scripts/train/`)
+
+**기본 구조**: MobileNetV2 사전학습 + 2단계 fine-tuning
+
+**단계별 학습 전략**:
+
+| 단계 | 방법 | 에폭 | 왜? |
+|------|------|------|-----|
+| **1단계 (Base 동결)** | MobileNetV2 base 레이어 고정, 상위 128차원 레이어만 학습 | ~15 | 초기엔 급격한 변화 방지, 기존 ImageNet 지식 보존 |
+| **2단계 (Fine-tuning)** | 상위 30레이어 해동, 매우 낮은 learning_rate로 미세조정 | ~14 (EarlyStopping patience=7) | base 레이어도 조금씩 조정해서 도메인 적응, 과적합 방지 |
+
+**검증 정확도** (2단계 최고):
+- 장르: 99.72%
+- 주야간: 98.75%
+- 실내/실외: 100% (train 18,996, val 4,996)
+
+**한계**: 
+- 검증셋 정확도 97%+ 달성해도 **실사진 정확도는 40~50%** (실내/실외는 13.3%)
+- "맥락 정보 부족한 클로즈업" 이미지(간판, 아스팔트, 하늘 안 보이는 실외)에서 확신도 높게 틀림
+- 이 한계 → **CLIP 제로샷으로 전환** (2026-07-09)
+
+**GPU 학습**: Colab GPU(T4)를 사용할 수 있도록 `colab_train.ipynb` 제공 (로컬 CPU는 에폭당 100~250초 소요)
+
+### [4단계] 결과 적용 (`scripts/maintenance/`)
+
+**작업**: 새 모델로 기존 DB 사진들 재분류
+
+```bash
+python scripts/maintenance/reclassify_photos.py
+```
+
+- 기존 DB의 모든 사진을 새 모델로 다시 분류
+- 변경된 장르, 태그를 DB에 반영
+- 모델 갱신 후마다 실행
+
+---
+
+**최종 업데이트**: git commit `1185a10` (2026-07-09)  
+**개발 환경**: Python 3.12, conda `firstvenv`  
+**상세 진행 과정**: [DEVLOG.md](DEVLOG.md) 참고
