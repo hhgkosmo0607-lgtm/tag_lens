@@ -126,7 +126,10 @@ def unlink_tag(photo_id: int, tag_name: str) -> None:
         )
 
 
-def _build_filter_query(tags: list[str], rating_min: int, date_from: str, date_to: str) -> tuple[str, list[object]]:
+def _build_filter_query(tags: list[str], rating_min: int, date_from: str, date_to: str, tag_mode: str = "AND") -> tuple[str, list[object]]:
+    """
+    tag_mode: "AND" (모든 태그 포함) 또는 "OR" (하나 이상 포함)
+    """
     where = ["1=1"]
     params: list[object] = []
 
@@ -153,26 +156,39 @@ def _build_filter_query(tags: list[str], rating_min: int, date_from: str, date_t
 
     if tags:
         placeholders = ",".join("?" for _ in tags)
-        base += f"""
-            AND p.id IN (
-                SELECT pt2.photo_id
-                FROM photo_tag pt2
-                JOIN tag t2 ON t2.id = pt2.tag_id
-                WHERE t2.name IN ({placeholders})
-                GROUP BY pt2.photo_id
-                HAVING COUNT(DISTINCT t2.name) = ?
-            )
-        """
-        params.extend(tags)
-        params.append(len(tags))
+        if tag_mode == "OR":
+            # OR: 하나 이상의 태그만 있으면 됨
+            base += f"""
+                AND p.id IN (
+                    SELECT DISTINCT pt2.photo_id
+                    FROM photo_tag pt2
+                    JOIN tag t2 ON t2.id = pt2.tag_id
+                    WHERE t2.name IN ({placeholders})
+                )
+            """
+            params.extend(tags)
+        else:
+            # AND: 모든 태그를 다 가져야 함
+            base += f"""
+                AND p.id IN (
+                    SELECT pt2.photo_id
+                    FROM photo_tag pt2
+                    JOIN tag t2 ON t2.id = pt2.tag_id
+                    WHERE t2.name IN ({placeholders})
+                    GROUP BY pt2.photo_id
+                    HAVING COUNT(DISTINCT t2.name) = ?
+                )
+            """
+            params.extend(tags)
+            params.append(len(tags))
 
     base += " GROUP BY p.id ORDER BY p.id DESC"
     return base, params
 
 
-def get_photos(tags: list[str] | None = None, rating_min: int = 0, date_from: str = "", date_to: str = "") -> list[sqlite3.Row]:
+def get_photos(tags: list[str] | None = None, rating_min: int = 0, date_from: str = "", date_to: str = "", tag_mode: str = "AND") -> list[sqlite3.Row]:
     tags = tags or []
-    query, params = _build_filter_query(tags, rating_min, date_from, date_to)
+    query, params = _build_filter_query(tags, rating_min, date_from, date_to, tag_mode)
     with get_connection() as conn:
         return list(conn.execute(query, params).fetchall())
 

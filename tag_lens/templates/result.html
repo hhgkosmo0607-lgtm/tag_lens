@@ -40,19 +40,37 @@
                     <span class="rating-text">{{ photo.rating }}/5</span>
                 </div>
                 <script>
-                window.setRating = function(photoId, rating) {
-                    document.getElementById('rating-input-' + photoId).value = rating;
-                    document.getElementById('rating-form-' + photoId).submit();
+                let currentDisplayRating = parseInt({{ photo.rating }}, 10);
+
+                const updateStars = (count) => {
+                    document.querySelectorAll('.star-rating .star').forEach((star, idx) => {
+                        star.classList.toggle('filled', idx < count);
+                    });
+                    document.querySelector('.rating-text').textContent = count + '/5';
                 };
+
+                window.setRating = function(photoId, rating) {
+                    const newRating = (currentDisplayRating === rating) ? 0 : rating;
+
+                    const form = document.getElementById('rating-form-' + photoId);
+                    const input = document.getElementById('rating-input-' + photoId);
+                    input.value = newRating;
+
+                    const formData = new FormData(form);
+                    fetch(form.action, {
+                        method: 'POST',
+                        body: formData
+                    }).then(response => {
+                        if (response.ok) {
+                            currentDisplayRating = newRating;
+                            updateStars(newRating);
+                        }
+                    }).catch(err => console.error('Rating update failed:', err));
+                };
+
                 document.addEventListener('DOMContentLoaded', function() {
-                    const rating = parseInt({{ photo.rating }}, 10);
-                    const stars = document.querySelectorAll('.star');
-                    const updateStars = (count) => {
-                        stars.forEach((star, idx) => {
-                            star.classList.toggle('filled', idx < count);
-                        });
-                    };
-                    updateStars(rating);
+                    updateStars(currentDisplayRating);
+                    const stars = document.querySelectorAll('.star-rating .star');
                     stars.forEach(star => {
                         star.addEventListener('mouseover', function() {
                             const hoverRating = parseInt(this.dataset.rating, 10);
@@ -61,7 +79,7 @@
                     });
                     const container = document.querySelector('.star-rating');
                     container.addEventListener('mouseleave', function() {
-                        updateStars(rating);
+                        updateStars(currentDisplayRating);
                     });
                 });
                 </script>

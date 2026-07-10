@@ -5,26 +5,21 @@
     <h2 style="font-size:1.4rem;font-weight:700;letter-spacing:-.01em;color:var(--ink);text-transform:none;">Gallery</h2>
 </div>
 
-<form class="filters" method="get" action="{{ url_for('gallery') }}">
-    <div class="filter-group">
-        <label>평점 이상</label>
-        <select name="rating_min">
-            {% for n in range(0, 6) %}
-            <option value="{{ n }}" {% if rating_min == n %}selected{% endif %}>{{ n }}+</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="filter-group">
-        <label>시작일</label>
-        <input type="date" name="date_from" value="{{ date_from }}">
-    </div>
-    <div class="filter-group">
-        <label>종료일</label>
-        <input type="date" name="date_to" value="{{ date_to }}">
-    </div>
-    <div class="filter-group" style="flex:1;min-width:200px;">
-        <label>Tags (AND)</label>
-        <div class="tag-check-group">
+<form class="filters" method="get" action="{{ url_for('gallery') }}" style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;">
+    <!-- 왼쪽: 태그 -->
+    <div style="flex:1;min-width:200px;display:flex;flex-direction:column;">
+        <label style="display:block;margin-bottom:8px;font-weight:600;">Tags</label>
+        <div style="margin-bottom:12px;">
+            <label style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+                <input type="radio" name="tag_mode" value="AND" {% if tag_mode == "AND" %}checked{% endif %} onchange="this.form.submit()">
+                <span>모두 포함 (AND)</span>
+            </label>
+            <label style="display:flex;gap:8px;align-items:center;">
+                <input type="radio" name="tag_mode" value="OR" {% if tag_mode == "OR" %}checked{% endif %} onchange="this.form.submit()">
+                <span>하나 이상 포함 (OR)</span>
+            </label>
+        </div>
+        <div class="tag-check-group" style="flex:1;margin-bottom:12px;">
             {% for row in tag_counts %}
             <label>
                 <input type="checkbox" name="tag" value="{{ row.name }}" {% if row.name in selected_tags %}checked{% endif %} onchange="this.form.submit()">
@@ -32,12 +27,63 @@
             </label>
             {% endfor %}
         </div>
+        <button class="btn ghost sm" type="button" onclick="document.querySelectorAll('input[name=tag]').forEach(x => x.checked = false); this.form.submit();" style="width:fit-content;padding:6px 4px;">태그 선택 해제</button>
     </div>
-    <button class="btn primary sm" type="submit">평점/날짜 적용</button>
-    {% if selected_tags or rating_min > 0 or date_from or date_to %}
-    <a class="btn ghost sm" href="{{ url_for('gallery') }}">초기화</a>
-    {% endif %}
+
+    <!-- 오른쪽: 평점, 날짜 -->
+    <div style="display:flex;flex-direction:column;gap:16px;min-width:200px;">
+        <div class="filter-group">
+            <label>평점 이상</label>
+            <div class="star-rating" style="margin-top:8px;">
+                {% for n in range(1, 6) %}
+                <span class="star" data-rating="{{ n }}" onclick="setRatingMin({{ n }})" style="cursor:pointer;" title="{{ n }}+ stars">★</span>
+                {% endfor %}
+                {% if rating_min > 0 %}
+                <span class="rating-text">{{ rating_min }}+</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="filter-group">
+            <label>시작일</label>
+            <input type="date" name="date_from" value="{{ date_from }}" onchange="this.form.submit()">
+        </div>
+        <div class="filter-group">
+            <label>종료일</label>
+            <input type="date" name="date_to" value="{{ date_to }}" onchange="this.form.submit()">
+        </div>
+        <a class="btn ghost sm" href="{{ url_for('gallery') }}" style="width:fit-content;display:inline-block;padding:6px 4px;">초기화</a>
+    </div>
 </form>
+
+<script>
+window.setRatingMin = function(rating) {
+    const currentRating = parseInt({{ rating_min }}, 10);
+    const newRating = (currentRating === rating) ? 0 : rating;
+    const url = new URL(window.location);
+    url.searchParams.set('rating_min', newRating);
+    window.location = url.toString();
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const rating = parseInt({{ rating_min }}, 10);
+    const stars = document.querySelectorAll('.star-rating .star');
+    const updateStars = (count) => {
+        stars.forEach((star, idx) => {
+            star.classList.toggle('filled', idx < count);
+        });
+    };
+    updateStars(rating);
+    stars.forEach(star => {
+        star.addEventListener('mouseover', function() {
+            const hoverRating = parseInt(this.dataset.rating, 10);
+            updateStars(hoverRating);
+        });
+    });
+    document.querySelector('.star-rating').addEventListener('mouseleave', function() {
+        updateStars(rating);
+    });
+});
+</script>
 
 <div class="photo-grid">
     {% for photo in photos %}

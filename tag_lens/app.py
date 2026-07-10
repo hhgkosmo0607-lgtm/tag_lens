@@ -216,8 +216,9 @@ def gallery():
     rating_min = int(request.args.get("rating_min", 0) or 0)
     date_from = request.args.get("date_from", "")
     date_to = request.args.get("date_to", "")
+    tag_mode = request.args.get("tag_mode", "AND")
 
-    photos = get_photos(tags=tags, rating_min=rating_min, date_from=date_from, date_to=date_to)
+    photos = get_photos(tags=tags, rating_min=rating_min, date_from=date_from, date_to=date_to, tag_mode=tag_mode)
     tag_counts = get_tag_counts()
 
     return render_template(
@@ -228,13 +229,8 @@ def gallery():
         rating_min=rating_min,
         date_from=date_from,
         date_to=date_to,
+        tag_mode=tag_mode,
     )
-
-
-@app.route("/tags")
-def tag_view():
-    tag_counts = get_tag_counts()
-    return render_template("tag_view.html", tag_counts=tag_counts)
 
 
 @app.route("/photo/<int:photo_id>/rate", methods=["POST"])
