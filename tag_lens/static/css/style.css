@@ -154,13 +154,15 @@ main { padding: 48px 0 80px; }
     background: var(--line);
     aspect-ratio: 1 / 1;
     cursor: pointer;
+    contain: layout style paint;
+    will-change: transform;
 }
 
 .photo-card img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform .4s ease, opacity .3s;
+    transition: transform .2s ease, opacity .2s;
 }
 
 .photo-card:hover img { transform: scale(1.04); }
@@ -170,7 +172,7 @@ main { padding: 48px 0 80px; }
     inset: 0;
     background: linear-gradient(to top, rgba(0,0,0,.55) 0%, transparent 55%);
     opacity: 0;
-    transition: opacity .25s;
+    transition: opacity .2s;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
